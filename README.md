@@ -1,49 +1,95 @@
---=== AisbergHub Spectral Style (автозапуск + расширяемое меню) ===--
-
+--=== AisbergHub Spectral Style (FADE ANIMATIONS) ===--
 if getgenv and getgenv().AisbergHubLoaded then return end
 if getgenv then getgenv().AisbergHubLoaded = true end
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local lp = Players.LocalPlayer
 
--- Твоя логика ESP, коллекторов (остается без изменений)
+-- Global state variables
 local playerESPEnabled = false
 local collectingEssence = false
 local collectingChest = false
 local antiAFKEnabled = false
+local isMinimized = false
+local isClosed = false
+local CurrentTab = 1
 
--- Все твои функции (clearPlayerESP, applyPlayerESP, collectBlockEssence, etc.) 
--- вставляются сюда БЕЗ ИЗМЕНЕНИЙ
+-- Fade tween presets
+local FadeInInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local FadeOutInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+local ResizeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
---================= SPECTRAL GUI =================--
+-- Function to fade in/out entire GUI recursively
+local function fadeElement(element, targetTransparency, speed)
+    local tweenInfo = TweenInfo.new(speed or 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goals = {BackgroundTransparency = targetTransparency}
+    
+    if element:IsA("TextLabel") or element:IsA("TextButton") then
+        goals.TextTransparency = targetTransparency
+    elseif element:IsA("ImageLabel") then
+        goals.ImageTransparency = targetTransparency
+    end
+    
+    local tween = TweenService:Create(element, tweenInfo, goals)
+    tween:Play()
+    return tween
+end
 
+local function fadeAllChildren(parent, targetTransparency, speed)
+    for _, child in pairs(parent:GetDescendants()) do
+        if child:IsA("GuiObject") and child.BackgroundTransparency ~= nil then
+            spawn(function()
+                fadeElement(child, targetTransparency, speed)
+            end)
+        end
+    end
+end
+
+-- Tap Sim functions
+local function collectBlockEssence()
+    collectingEssence = not collectingEssence
+    local btn = ScreenGui.MainFrame.ContentFrame.CollectEssenceBtn
+    local targetColor = collectingEssence and Color3.fromRGB(0, 255, 100, 200) or Color3.fromRGB(20, 20, 25, 180)
+    TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+end
+
+local function collectClickerChests()
+    collectingChest = not collectingChest
+    local btn = ScreenGui.MainFrame.ContentFrame.CollectChestBtn
+    local targetColor = collectingChest and Color3.fromRGB(0, 255, 100, 200) or Color3.fromRGB(20, 20, 25, 180)
+    TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+end
+
+-- Create ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AisbergHub_Spectral"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = lp:WaitForChild("PlayerGui")
 
--- Главная рамка
+-- MainFrame (STARTS COMPLETELY INVISIBLE)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 600, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.Size = UDim2.new(0, 50, 0, 50)
+MainFrame.Position = UDim2.new(1, -70, 1, -70)
+MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50, 255)  -- Fully transparent initially
+MainFrame.BackgroundTransparency = 1
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = true  -- ✅ ВКЛЮЧЕНО СРАЗУ
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- Верхняя панель
+-- TopBar
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 45)
-TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15, 255)
+TopBar.BackgroundTransparency = 1
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
@@ -51,12 +97,14 @@ local TopCorner = Instance.new("UICorner")
 TopCorner.CornerRadius = UDim.new(0, 12)
 TopCorner.Parent = TopBar
 
--- ❌ КНОПКА ЗАКРЫТИЯ (СПРАВА В УГЛУ)
+-- Close Button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 CloseBtn.Position = UDim2.new(1, -40, 0, 8)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(60, 40, 40)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 20, 255)
+CloseBtn.BackgroundTransparency = 1
 CloseBtn.Text = "✕"
+CloseBtn.TextTransparency = 1
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 16
@@ -66,24 +114,27 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 6)
 CloseCorner.Parent = CloseBtn
 
--- Логотип
+-- Logo
 local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(0, 150, 1, 0)
 Logo.Position = UDim2.new(0, 15, 0, 0)
 Logo.BackgroundTransparency = 1
 Logo.Text = "AisbergHub"
-Logo.TextColor3 = Color3.fromRGB(100, 200, 255)
+Logo.TextTransparency = 1
+Logo.TextColor3 = Color3.fromRGB(150, 200, 255)
 Logo.Font = Enum.Font.GothamBold
 Logo.TextSize = 18
 Logo.TextXAlignment = Enum.TextXAlignment.Left
 Logo.Parent = TopBar
 
--- Status + Автор
+-- Status Label
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(0, 100, 0, 20)
 StatusLabel.Position = UDim2.new(0, 180, 0.5, -10)
-StatusLabel.BackgroundColor3 = Color3.fromRGB(25, 35, 25)
+StatusLabel.BackgroundColor3 = Color3.fromRGB(10, 20, 10, 255)
+StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "Undetected"
+StatusLabel.TextTransparency = 1
 StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
 StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 12
@@ -93,35 +144,38 @@ local StatusCorner = Instance.new("UICorner")
 StatusCorner.CornerRadius = UDim.new(0, 4)
 StatusCorner.Parent = StatusLabel
 
+-- Author Label
 local AuthorLabel = Instance.new("TextLabel")
 AuthorLabel.Size = UDim2.new(0, 100, 0, 16)
 AuthorLabel.Position = UDim2.new(0, 290, 0.5, -8)
 AuthorLabel.BackgroundTransparency = 1
 AuthorLabel.Text = "by hasberd"
-AuthorLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
+AuthorLabel.TextTransparency = 1
+AuthorLabel.TextColor3 = Color3.fromRGB(160, 160, 180)
 AuthorLabel.Font = Enum.Font.Gotham
 AuthorLabel.TextSize = 11
 AuthorLabel.Parent = TopBar
 
--- Левая панель категорий
+-- SideBar (Categories)
 local SideBar = Instance.new("Frame")
 SideBar.Size = UDim2.new(0, 180, 1, -60)
 SideBar.Position = UDim2.new(0, 0, 0, 45)
 SideBar.BackgroundTransparency = 1
 SideBar.Parent = MainFrame
 
-local Categories = {"🏠 Главное", "🎮 Универсал", "⚡ Tap Sim", "👁️ Visuals", "🛡️ AntiAFK"}
+local Categories = {"🏠 Main", "🎮 Universal", "⚡ Tap Sim", "👁️ Visuals", "🛡️ AntiAFK"}
 local CategoryBtns = {}
-local CurrentTab = 1
 
 for i, category in ipairs(Categories) do
     local btn = Instance.new("TextButton")
     btn.Name = "CategoryBtn" .. i
     btn.Size = UDim2.new(1, -10, 0, 40)
     btn.Position = UDim2.new(0, 10, 0, (i-1) * 45 + 10)
-    btn.BackgroundColor3 = i == 1 and Color3.fromRGB(50, 50, 70) or Color3.fromRGB(30, 30, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 20, 255)
+    btn.BackgroundTransparency = 1
     btn.BorderSizePixel = 0
     btn.Text = category
+    btn.TextTransparency = 1
     btn.TextColor3 = Color3.fromRGB(220, 220, 240)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 14
@@ -136,18 +190,19 @@ for i, category in ipairs(Categories) do
     CategoryBtns[i] = btn
 end
 
--- Контент область
+-- ContentFrame
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Size = UDim2.new(1, -200, 1, -65)
 ContentFrame.Position = UDim2.new(0, 185, 0, 50)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
--- Info панель снизу
+-- InfoPanel
 local InfoPanel = Instance.new("Frame")
 InfoPanel.Size = UDim2.new(1, -20, 0, 30)
 InfoPanel.Position = UDim2.new(0, 10, 1, -40)
-InfoPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+InfoPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 15, 255)
+InfoPanel.BackgroundTransparency = 1
 InfoPanel.BorderSizePixel = 0
 InfoPanel.Parent = MainFrame
 
@@ -160,6 +215,7 @@ UserLabel.Size = UDim2.new(0.3, 0, 1, 0)
 UserLabel.Position = UDim2.new(0, 10, 0, 0)
 UserLabel.BackgroundTransparency = 1
 UserLabel.Text = "User: " .. lp.Name
+UserLabel.TextTransparency = 1
 UserLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
 UserLabel.Font = Enum.Font.Gotham
 UserLabel.TextSize = 12
@@ -170,98 +226,139 @@ local GameLabel = Instance.new("TextLabel")
 GameLabel.Size = UDim2.new(0.4, 0, 1, 0)
 GameLabel.Position = UDim2.new(0.35, 0, 0, 0)
 GameLabel.BackgroundTransparency = 1
-GameLabel.Text = "Current Game: [UPD] Tap Simulator"
+GameLabel.Text = "Current Game: Tap Simulator"
+GameLabel.TextTransparency = 1
 GameLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
 GameLabel.Font = Enum.Font.Gotham
 GameLabel.TextSize = 12
 GameLabel.TextXAlignment = Enum.TextXAlignment.Left
 GameLabel.Parent = InfoPanel
 
--- Твои кнопки (Tap Sim таб)
+-- Tab Content Frames
+local TabContents = {}
+for i, category in ipairs(Categories) do
+    local content = Instance.new("Frame")
+    content.Name = "Tab" .. i
+    content.Size = UDim2.new(1, -20, 1, -80)
+    content.Position = UDim2.new(0, 10, 0, 10)
+    content.BackgroundTransparency = 1
+    content.Visible = i == 1
+    content.Parent = ContentFrame
+    TabContents[i] = content
+end
+
+-- Tap Sim Buttons (in Tab 3)
 local CollectEssenceBtn = Instance.new("TextButton")
 CollectEssenceBtn.Size = UDim2.new(0, 220, 0, 45)
 CollectEssenceBtn.Position = UDim2.new(0, 20, 0, 20)
-CollectEssenceBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+CollectEssenceBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25, 255)
+CollectEssenceBtn.BackgroundTransparency = 1
 CollectEssenceBtn.BorderSizePixel = 0
 CollectEssenceBtn.Text = "💎 Collect Block Essence"
+CollectEssenceBtn.TextTransparency = 1
 CollectEssenceBtn.TextColor3 = Color3.fromRGB(230, 230, 250)
 CollectEssenceBtn.Font = Enum.Font.Gotham
 CollectEssenceBtn.TextSize = 15
 CollectEssenceBtn.AutoButtonColor = false
-CollectEssenceBtn.Parent = ContentFrame
+CollectEssenceBtn.Parent = TabContents[3]
 
 local CollectChestBtn = Instance.new("TextButton")
 CollectChestBtn.Size = UDim2.new(0, 220, 0, 45)
 CollectChestBtn.Position = UDim2.new(0, 20, 0, 75)
-CollectChestBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+CollectChestBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 25, 255)
+CollectChestBtn.BackgroundTransparency = 1
 CollectChestBtn.BorderSizePixel = 0
 CollectChestBtn.Text = "📦 Collect Clicker Chest"
+CollectChestBtn.TextTransparency = 1
 CollectChestBtn.TextColor3 = Color3.fromRGB(230, 230, 250)
 CollectChestBtn.Font = Enum.Font.Gotham
 CollectChestBtn.TextSize = 15
 CollectChestBtn.AutoButtonColor = false
-CollectChestBtn.Parent = ContentFrame
+CollectChestBtn.Parent = TabContents[3]
 
--- Скругления кнопок
+-- Button corners
 for _, btn in pairs({CollectEssenceBtn, CollectChestBtn}) do
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = btn
 end
 
--- ЛОГИКА РАБОТЫ МЕНЮ
+-- INITIAL FADE IN (icon only)
+spawn(function()
+    fadeAllChildren(MainFrame, 0.2, 0.5)  -- Semi-transparent black
+end)
 
-local isMinimized = false
-local isClosed = false
-
--- 🔄 Переключение табов
+-- Tab switching with fade
 for i, btn in ipairs(CategoryBtns) do
     btn.MouseButton1Click:Connect(function()
         CurrentTab = i
         for j, catBtn in ipairs(CategoryBtns) do
-            catBtn.BackgroundColor3 = j == i and Color3.fromRGB(50, 50, 70) or Color3.fromRGB(30, 30, 35)
+            TweenService:Create(catBtn, TweenInfo.new(0.2), {
+                BackgroundTransparency = j == i and 0.1 or 0.8
+            }):Play()
         end
-        -- Здесь логика показа контента для таба i
+        
+        -- Fade out all tabs, then fade in target
+        for j, tab in ipairs(TabContents) do
+            if j ~= i then
+                fadeElement(tab, 1, 0.2)
+                tab.Visible = false
+            else
+                tab.Visible = true
+                fadeElement(tab, 0.2, 0.3)
+            end
+        end
     end)
 end
 
--- ❌ ЗАКРЫТИЕ НА СОВСЕМ
+-- Close button with fade out
 CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()  -- Полное удаление
-    isClosed = true
+    fadeAllChildren(MainFrame, 1, 0.3)
+    local closeTween = TweenService:Create(MainFrame, FadeOutInfo, {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    })
+    closeTween:Play()
+    closeTween.Completed:Connect(function()
+        ScreenGui:Destroy()
+        isClosed = true
+    end)
 end)
 
--- K - СКРЫТЬ/ПОКАЗАТЬ
+-- ENHANCED K key toggle with FADE + RESIZE
 UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
+    if gpe or isClosed then return end
     if input.KeyCode == Enum.KeyCode.K then
-        if isClosed then return end
-        
-        if MainFrame.Size.X.Scale == 0 then  -- Расширить на весь экран
-            TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-                Size = UDim2.new(1, -20, 1, -20),
-                Position = UDim2.new(0, 10, 0, 10)
-            }):Play()
-        else  -- Свернуть/показать
-            if isMinimized then
-                MainFrame.Size = UDim2.new(0, 600, 0, 400)
-                MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
-                isMinimized = false
-            else
-                MainFrame.Size = UDim2.new(0, 50, 0, 50)
-                isMinimized = true
-            end
+        if MainFrame.Size.X.Offset == 50 then -- Icon -> Full menu
+            -- Resize first
+            local resizeTween = TweenService:Create(MainFrame, ResizeInfo, {
+                Size = UDim2.new(0, 600, 0, 400),
+                Position = UDim2.new(0.5, -300, 0.5, -200)
+            })
+            resizeTween:Play()
+            
+            -- Then fade in everything
+            resizeTween.Completed:Connect(function()
+                fadeAllChildren(MainFrame, 0.2, 0.4)
+            end)
+            isMinimized = false
+        else -- Full -> Icon
+            fadeAllChildren(MainFrame, 1, 0.3)
+            local minimizeTween = TweenService:Create(MainFrame, FadeOutInfo, {
+                Size = UDim2.new(0, 50, 0, 50),
+                Position = UDim2.new(1, -70, 1, -70)
+            })
+            minimizeTween:Play()
+            isMinimized = true
         end
     end
 end)
 
--- Подключение твоих функций
+-- Button connections
 CollectEssenceBtn.MouseButton1Click:Connect(collectBlockEssence)
 CollectChestBtn.MouseButton1Click:Connect(collectClickerChests)
 
--- Вставляется ПОСЛЕ создания MainFrame и TopBar в Spectral коде
-
---================= DRAGGABLE TOPBAR (только верхняя панель тащится) =================--
+-- Draggable TopBar
 do
     local dragging = false
     local dragInput, dragStart, startPos
@@ -276,14 +373,11 @@ do
         )
     end
 
-    -- ✅ ПЕРЕТАСКИВАНИЕ ТОЛЬКО ПО TopBar (удобнее)
     TopBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
-            startPos = MainFrame.Position  -- Двигаем MainFrame
-
+            startPos = MainFrame.Position
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -293,8 +387,7 @@ do
     end)
 
     TopBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
     end)
@@ -306,43 +399,4 @@ do
     end)
 end
 
---================= РАСШИРЕННАЯ ЛОГИКА K + CLOSE (Spectral версия) =================--
-
-local isMinimized = false
-local isClosed = false
-
--- ❌ ЗАКРЫТИЕ НА СОВСЕМ (TopBar кнопка)
-CloseBtn.MouseButton1Click:Connect(function()
-    if isClosed then return end
-    ScreenGui:Destroy()  -- Полное уничтожение
-    isClosed = true
-    print("AisbergHub полностью закрыт")
-end)
-
--- K - МУЛЬТИФУНКЦИОНАЛЬНАЯ ЛОГИКА
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe or isClosed then return end
-    
-    if input.KeyCode == Enum.KeyCode.K then
-        if MainFrame.Size.X.Scale == 1 then  -- Если на весь экран → свернуть
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-                Size = UDim2.new(0, 600, 0, 400),
-                Position = UDim2.new(0.5, -300, 0.5, -200)
-            }):Play()
-        elseif isMinimized then  -- Если свёрнут → нормальный размер
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-                Size = UDim2.new(0, 600, 0, 400),
-                Position = UDim2.new(0.5, -300, 0.5, -200)
-            }):Play()
-            isMinimized = false
-        else  -- Нормальный → свернуть в иконку
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-                Size = UDim2.new(0, 50, 0, 50),
-                Position = UDim2.new(1, -70, 1, -70)  -- В правый нижний угол
-            }):Play()
-            isMinimized = true
-        end
-    end
-end)
-
-print("AisbergHub Spectral загружен! K = свернуть/развернуть/весь экран, перетаскивай за TopBar, ✕ = закрыть навсегда")
+print("AisbergHub Spectral Fade v3.0 loaded! Smooth fade animations enabled")
