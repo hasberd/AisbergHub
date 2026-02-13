@@ -1,4 +1,4 @@
---=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Player ESP + Collect Block Essence) ===--
+--=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Player ESP + Collect Block Essence + ClickerChest) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -76,16 +76,15 @@ local function togglePlayerESP()
     end
 end
 
---================= COLLECT BLOCK ESSENCE (BlockEssence = Model) =================--
-
-local collectingEssence = false
-
 local function getHRP()
     local char = lp.Character or lp.CharacterAdded:Wait()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
--- returns { part = PrimaryPart, prompt = ProximityPrompt } for all BlockEssence models
+--================= COLLECT BLOCK ESSENCE (BlockEssence = Model) =================--
+
+local collectingEssence = false
+
 local function findEssenceTargets()
     local list = {}
 
@@ -153,6 +152,51 @@ local function collectBlockEssence()
     end
 
     collectingEssence = false
+end
+
+--================= COLLECT CLICKER CHEST (WorldChests/ClickerChest/Hitbox) =================--
+
+local collectingChest = false
+
+local function findClickerChestHitboxes()
+    local list = {}
+
+    -- generic search: any Model named "ClickerChest" with child "Hitbox"
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and model.Name == "ClickerChest" then
+            local hitbox = model:FindFirstChild("Hitbox")
+            if hitbox and hitbox:IsA("BasePart") then
+                table.insert(list, hitbox)
+            end
+        end
+    end
+
+    return list
+end
+
+local function collectClickerChests()
+    if collectingChest then return end
+    collectingChest = true
+
+    local hrp = getHRP()
+    if not hrp then
+        collectingChest = false
+        return
+    end
+
+    local hitboxes = findClickerChestHitboxes()
+    print("ClickerChest hitboxes found:", #hitboxes)
+
+    for _, hit in ipairs(hitboxes) do
+        if not collectingChest then break end
+        if hit and hit.Parent then
+            -- TP near the hitbox so TouchInterest fires
+            hrp.CFrame = hit.CFrame * CFrame.new(0, 3, 0)
+            task.wait(0.3)
+        end
+    end
+
+    collectingChest = false
 end
 
 --================= GUI BASE =================--
@@ -351,6 +395,20 @@ collectEssenceBtn.AutoButtonColor = false
 collectEssenceBtn.Parent = visualPage
 Instance.new("UICorner", collectEssenceBtn).CornerRadius = UDim.new(0, 6)
 
+local collectChestBtn = Instance.new("TextButton")
+collectChestBtn.Size = UDim2.new(0, 200, 0, 28)
+collectChestBtn.Position = UDim2.new(0, 0, 0, 110)
+collectChestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+collectChestBtn.BorderSizePixel = 0
+collectChestBtn.Text = "Collect Clicker Chest"
+collectChestBtn.TextColor3 = Color3.fromRGB(230,230,240)
+collectChestBtn.Font = Enum.Font.Gotham
+collectChestBtn.TextSize = 14
+collectChestBtn.TextTransparency = 1
+collectChestBtn.AutoButtonColor = false
+collectChestBtn.Parent = visualPage
+Instance.new("UICorner", collectChestBtn).CornerRadius = UDim.new(0, 6)
+
 --================= ANTIAFK TAB =================--
 
 local antiTitle = Instance.new("TextLabel")
@@ -475,6 +533,17 @@ collectEssenceBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+collectChestBtn.MouseButton1Click:Connect(function()
+    if not collectingChest then
+        collectChestBtn.Text = "Collecting..."
+        collectClickerChests()
+        collectChestBtn.Text = "Collect Clicker Chest"
+    else
+        collectingChest = false
+        collectChestBtn.Text = "Collect Clicker Chest"
+    end
+end)
+
 --================= ANIMATION =================--
 
 local isVisible = false
@@ -487,7 +556,7 @@ local guiElements = {
     mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn, settingsTabBtn,
     mainPlaceholder, gamePlaceholder, visualPlaceholder, settingsPlaceholder,
     antiTitle, antiStatus, antiDesc, antiBtn,
-    playerESPBtn, collectEssenceBtn
+    playerESPBtn, collectEssenceBtn, collectChestBtn
 }
 
 local function setTextTransparency(value)
