@@ -1,4 +1,4 @@
---=== AisbergHub (Visual only: ESP + Aimbot) ===--
+--=== AisbergHub (Visual only: ESP + Aimbot, Hypershot mode) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -85,23 +85,36 @@ local function togglePlayerESP()
     end
 end
 
---================= AIMBOT (head‑lock enemy + FOV) =================--
+--================= AIMBOT (head/body lock enemy + FOV, Hypershot) =================--
 
 local aimbotEnabled = false
 local aimbotHoldKey = Enum.UserInputType.MouseButton2 -- ПКМ
 local aimbotSmoothing = 0 -- 0 = instant lock
-local aimbotFOV = 200 -- радиус FOV в пикселях[web:345]
+local aimbotFOV = 200 -- обычный FOV в пикселях[web:345]
+
+local hypershotMode = true  -- для Hypershot оставь true
+local hypershotFOV = 260    -- FOV для Hypershot (чуть шире)[web:377]
 
 local function getHead(partChar)
     if not partChar then return nil end
-    return partChar:FindFirstChild("Head")
-        or partChar:FindFirstChild("UpperTorso")
-        or partChar:FindFirstChild("HumanoidRootPart")
+
+    if hypershotMode then
+        -- центр тела / основной хитбокс
+        return partChar:FindFirstChild("HumanoidRootPart")
+            or partChar:FindFirstChild("UpperTorso")
+            or partChar:FindFirstChild("Torso")
+            or partChar:FindFirstChild("Head")
+    else
+        -- стандартный head‑aim
+        return partChar:FindFirstChild("Head")
+            or partChar:FindFirstChild("UpperTorso")
+            or partChar:FindFirstChild("HumanoidRootPart")
+    end
 end
 
 local function getClosestEnemyToCrosshair(maxFov)
     local mouseLocation = UserInputService:GetMouseLocation()
-    local limit = maxFov or aimbotFOV
+    local limit = maxFov or (hypershotMode and hypershotFOV or aimbotFOV)
     local nearestDist = limit
     local nearestPlayer, nearestHead = nil, nil
 
@@ -159,7 +172,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---================= GUI (Visual only) =================--
+--================= GUI (Visual only: ESP + Aimbot) =================--
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "AisbergHubUI"
@@ -230,12 +243,16 @@ Instance.new("UICorner", playerESPBtn).CornerRadius = UDim.new(0, 6)
 
 -- Aimbot button
 
+local function getCurrentFOV()
+    return hypershotMode and hypershotFOV or aimbotFOV
+end
+
 local aimbotBtn = Instance.new("TextButton")
-aimbotBtn.Size = UDim2.new(0, 200, 0, 28)
+aimbotBtn.Size = UDim2.new(0, 220, 0, 28)
 aimbotBtn.Position = UDim2.new(0, 0, 0, 40)
 aimbotBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 aimbotBtn.BorderSizePixel = 0
-aimbotBtn.Text = "Aimbot: OFF (RMB, FOV "..aimbotFOV..")"
+aimbotBtn.Text = "Aimbot: OFF (RMB, FOV "..getCurrentFOV()..")"
 aimbotBtn.TextColor3 = Color3.fromRGB(230,230,240)
 aimbotBtn.Font = Enum.Font.Gotham
 aimbotBtn.TextSize = 14
@@ -243,6 +260,20 @@ aimbotBtn.TextTransparency = 1
 aimbotBtn.AutoButtonColor = false
 aimbotBtn.Parent = content
 Instance.new("UICorner", aimbotBtn).CornerRadius = UDim.new(0, 6)
+
+-- (опционально) Label про Hypershot mode
+
+local modeLabel = Instance.new("TextLabel")
+modeLabel.Size = UDim2.new(1, 0, 0, 18)
+modeLabel.Position = UDim2.new(0, 0, 0, 76)
+modeLabel.BackgroundTransparency = 1
+modeLabel.Text = hypershotMode and "Mode: Hypershot (body aim)" or "Mode: Default (head aim)"
+modeLabel.TextColor3 = Color3.fromRGB(180,180,195)
+modeLabel.Font = Enum.Font.Gotham
+modeLabel.TextSize = 13
+modeLabel.TextTransparency = 1
+modeLabel.TextXAlignment = Enum.TextXAlignment.Left
+modeLabel.Parent = content
 
 -- Handlers
 
@@ -254,9 +285,10 @@ end)
 
 aimbotBtn.MouseButton1Click:Connect(function()
     aimbotEnabled = not aimbotEnabled
+    local fovText = getCurrentFOV()
     aimbotBtn.Text = aimbotEnabled
-        and ("Aimbot: ON (RMB, FOV "..aimbotFOV..")")
-        or ("Aimbot: OFF (RMB, FOV "..aimbotFOV..")")
+        and ("Aimbot: ON (RMB, FOV "..fovText..")")
+        or ("Aimbot: OFF (RMB, FOV "..fovText..")")
     aimbotBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
 end)
 
@@ -267,7 +299,7 @@ local tweenTime = 0.25
 local easing = Enum.EasingStyle.Quad
 local direction = Enum.EasingDirection.Out
 
-local guiElements = {title, closeBtn, playerESPBtn, aimbotBtn}
+local guiElements = {title, closeBtn, playerESPBtn, aimbotBtn, modeLabel}
 
 local function setTextTransparency(value)
     for _, ui in ipairs(guiElements) do
@@ -382,4 +414,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("AisbergHub Visual loaded. Press K to open, toggle ESP / hold RMB for aimbot.")
+print("AisbergHub Visual (ESP + Aimbot, Hypershot mode) loaded. Press K to open, toggle ESP, hold RMB for aimbot.")
