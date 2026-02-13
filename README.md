@@ -259,4 +259,90 @@ end)
 CollectEssenceBtn.MouseButton1Click:Connect(collectBlockEssence)
 CollectChestBtn.MouseButton1Click:Connect(collectClickerChests)
 
-print("🚀 AisbergHub Spectral загружен! K = свернуть/расширить, ✕ = закрыть навсегда")
+-- Вставляется ПОСЛЕ создания MainFrame и TopBar в Spectral коде
+
+--================= DRAGGABLE TOPBAR (только верхняя панель тащится) =================--
+do
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+
+    -- ✅ ПЕРЕТАСКИВАНИЕ ТОЛЬКО ПО TopBar (удобнее)
+    TopBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position  -- Двигаем MainFrame
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    TopBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            update(input)
+        end
+    end)
+end
+
+--================= РАСШИРЕННАЯ ЛОГИКА K + CLOSE (Spectral версия) =================--
+
+local isMinimized = false
+local isClosed = false
+
+-- ❌ ЗАКРЫТИЕ НА СОВСЕМ (TopBar кнопка)
+CloseBtn.MouseButton1Click:Connect(function()
+    if isClosed then return end
+    ScreenGui:Destroy()  -- Полное уничтожение
+    isClosed = true
+    print("AisbergHub полностью закрыт")
+end)
+
+-- K - МУЛЬТИФУНКЦИОНАЛЬНАЯ ЛОГИКА
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe or isClosed then return end
+    
+    if input.KeyCode == Enum.KeyCode.K then
+        if MainFrame.Size.X.Scale == 1 then  -- Если на весь экран → свернуть
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+                Size = UDim2.new(0, 600, 0, 400),
+                Position = UDim2.new(0.5, -300, 0.5, -200)
+            }):Play()
+        elseif isMinimized then  -- Если свёрнут → нормальный размер
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0, 600, 0, 400),
+                Position = UDim2.new(0.5, -300, 0.5, -200)
+            }):Play()
+            isMinimized = false
+        else  -- Нормальный → свернуть в иконку
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+                Size = UDim2.new(0, 50, 0, 50),
+                Position = UDim2.new(1, -70, 1, -70)  -- В правый нижний угол
+            }):Play()
+            isMinimized = true
+        end
+    end
+end)
+
+print("AisbergHub Spectral загружен! K = свернуть/развернуть/весь экран, перетаскивай за TopBar, ✕ = закрыть навсегда")
