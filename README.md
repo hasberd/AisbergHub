@@ -1,4 +1,6 @@
 --=== AisbergHub Soft Menu (AFK + Smooth Scale + TP List) ===--
+print("AisbergHub started")
+
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
