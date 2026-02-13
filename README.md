@@ -79,40 +79,44 @@ end
 --================= Collect Block Essence (BlockEssence = Model) =================--
 
 local collectingEssence = false
+local essenceMeshId = "rbxassetid://202604402" -- seedblock Normal Block Essence
 
 local function getHRP()
     local char = lp.Character or lp.CharacterAdded:Wait()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
--- возвращает таблицу { part = PrimaryPart, prompt = ProximityPrompt } для всех BlockEssence
-local function findEssenceTargets()
+-- ищем МОДЕЛИ BlockEssence и в них подходящий Part
+local function findEssenceModels()
     local list = {}
 
-    for _, model in ipairs(Workspace:GetDescendants()) do
-        if model:IsA("Model") and model.Name == "BlockEssence" then
-            local primary = model:FindFirstChild("Primary")
-            if not (primary and primary:IsA("BasePart")) then
-                if model.PrimaryPart and model.PrimaryPart:IsA("BasePart") then
-                    primary = model.PrimaryPart
-                else
-                    for _, child in ipairs(model:GetDescendants()) do
-                        if child:IsA("BasePart") then
-                            primary = child
-                            break
-                        end
+    for _, d in ipairs(Workspace:GetDescendants()) do
+        if d:IsA("Model") and d.Name == "BlockEssence" then
+            local targetPart
+
+            if d.PrimaryPart and d.PrimaryPart:IsA("BasePart") then
+                targetPart = d.PrimaryPart
+            else
+                for _, child in ipairs(d:GetDescendants()) do
+                    if child:IsA("BasePart") then
+                        targetPart = child
+                        break
                     end
                 end
             end
 
-            local prompt = model:FindFirstChildOfClass("ProximityPrompt")
-                or model:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if targetPart then
+                local meshId = nil
+                if targetPart:IsA("MeshPart") then
+                    meshId = targetPart.MeshId
+                else
+                    local mesh = targetPart:FindFirstChildOfClass("SpecialMesh")
+                    if mesh then meshId = mesh.MeshId end
+                end
 
-            if primary and prompt then
-                table.insert(list, {
-                    part = primary,
-                    prompt = prompt
-                })
+                if meshId and meshId == essenceMeshId then
+                    table.insert(list, targetPart)
+                end
             end
         end
     end
@@ -130,24 +134,32 @@ local function collectBlockEssence()
         return
     end
 
-    local targets = findEssenceTargets()
-    print("BlockEssence targets found:", #targets)
+    local blocks = findEssenceModels()
+    print("BlockEssence models found:", #blocks)
 
-    for _, t in ipairs(targets) do
+    for _, part in ipairs(blocks) do
         if not collectingEssence then break end
-        local part = t.part
-        local prompt = t.prompt
-
-        if part and part.Parent and prompt and prompt.Parent then
+        if part and part.Parent then
             hrp.CFrame = part.CFrame * CFrame.new(0, 3, 0)
             task.wait(0.2)
 
-            for i = 1, 5 do
-                if not collectingEssence then break end
-                pcall(function()
-                    fireproximityprompt(prompt, 1)
-                end)
-                task.wait(0.25)
+            local model = part:FindFirstAncestorOfClass("Model") or part.Parent
+            local prompt = nil
+            if model then
+                prompt = model:FindFirstChildOfClass("ProximityPrompt")
+                    or model:FindFirstChildWhichIsA("ProximityPrompt", true)
+            end
+
+            if prompt then
+                for i = 1, 5 do
+                    if not collectingEssence then break end
+                    pcall(function()
+                        fireproximityprompt(prompt, 1)
+                    end)
+                    task.wait(0.25)
+                end
+            else
+                task.wait(0.5)
             end
         end
     end
@@ -349,7 +361,7 @@ collectEssenceBtn.TextSize = 14
 collectEssenceBtn.TextTransparency = 1
 collectEssenceBtn.AutoButtonColor = false
 collectEssenceBtn.Parent = visualPage
-Instance.new("UICorner", collectEssenceBtn).CornerRadius = UDim.New(0, 6)
+Instance.new("UICorner", collectEssenceBtn).CornerRadius = UDim.new(0, 6)
 
 --================= AntiAFK блок =================--
 
