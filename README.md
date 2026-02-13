@@ -1,4 +1,4 @@
---=== AisbergHub (Visual only: ESP + Aimbot, Hypershot mode) ===--
+--=== AisbergHub (Visual only: ESP + Aimbot, универсальный под риги) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -85,58 +85,80 @@ local function togglePlayerESP()
     end
 end
 
---================= AIMBOT (head/body lock enemy + FOV, Hypershot) =================--
+--================= AIMBOT (универсальный root‑lock + FOV) =================--
 
 local aimbotEnabled = false
 local aimbotHoldKey = Enum.UserInputType.MouseButton2 -- ПКМ
 local aimbotSmoothing = 0 -- 0 = instant lock
-local aimbotFOV = 200 -- обычный FOV в пикселях[web:345]
+local aimbotFOV = 220 -- радиус FOV в пикселях
 
-local hypershotMode = true  -- для Hypershot оставь true
-local hypershotFOV = 260    -- FOV для Hypershot (чуть шире)[web:377]
+-- если игра типа Hypershot, можно оставить true для чуть большего FOV
+local hypershotMode = true
+local hypershotFOV = 260
 
-local function getHead(partChar)
-    if not partChar then return nil end
+local function getAimPart(char)
+    if not char then return nil end
 
-    if hypershotMode then
-        -- центр тела / основной хитбокс
-        return partChar:FindFirstChild("HumanoidRootPart")
-            or partChar:FindFirstChild("UpperTorso")
-            or partChar:FindFirstChild("Torso")
-            or partChar:FindFirstChild("Head")
-    else
-        -- стандартный head‑aim
-        return partChar:FindFirstChild("Head")
-            or partChar:FindFirstChild("UpperTorso")
-            or partChar:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return nil end
+
+    -- 1) RootPart, который Roblox считает главным телом[web:361]
+    local root = humanoid.RootPart
+    if root and root:IsA("BasePart") then
+        return root
     end
+
+    -- 2) Популярные части для разных ригов
+    local candidates = {
+        "HumanoidRootPart",
+        "UpperTorso",
+        "LowerTorso",
+        "Torso",
+        "Head"
+    }
+
+    for _, name in ipairs(candidates) do
+        local p = char:FindFirstChild(name)
+        if p and p:IsA("BasePart") then
+            return p
+        end
+    end
+
+    -- 3) Любой BasePart в модели, если ничего не нашли
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("BasePart") then
+            return child
+        end
+    end
+
+    return nil
 end
 
 local function getClosestEnemyToCrosshair(maxFov)
     local mouseLocation = UserInputService:GetMouseLocation()
     local limit = maxFov or (hypershotMode and hypershotFOV or aimbotFOV)
     local nearestDist = limit
-    local nearestPlayer, nearestHead = nil, nil
+    local nearestPlayer, nearestPart = nil, nil
 
     for _, plr in ipairs(Players:GetPlayers()) do
         if isEnemy(plr) and plr.Character then
-            local head = getHead(plr.Character)
+            local part = getAimPart(plr.Character)
             local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-            if head and hum and hum.Health > 0 then
-                local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+            if part and hum and hum.Health > 0 then
+                local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
                 if onScreen then
                     local dist = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
                     if dist <= limit and dist < nearestDist then
                         nearestDist = dist
                         nearestPlayer = plr
-                        nearestHead = head
+                        nearestPart = part
                     end
                 end
             end
         end
     end
 
-    return nearestPlayer, nearestHead
+    return nearestPlayer, nearestPart
 end
 
 local function aimAt(position)
@@ -166,9 +188,9 @@ end)
 
 RunService.RenderStepped:Connect(function()
     if not aimbotEnabled or not holdingAim then return end
-    local enemy, head = getClosestEnemyToCrosshair()
-    if enemy and head then
-        aimAt(head.Position)
+    local enemy, part = getClosestEnemyToCrosshair()
+    if enemy and part then
+        aimAt(part.Position)
     end
 end)
 
@@ -261,13 +283,11 @@ aimbotBtn.AutoButtonColor = false
 aimbotBtn.Parent = content
 Instance.new("UICorner", aimbotBtn).CornerRadius = UDim.new(0, 6)
 
--- (опционально) Label про Hypershot mode
-
 local modeLabel = Instance.new("TextLabel")
 modeLabel.Size = UDim2.new(1, 0, 0, 18)
 modeLabel.Position = UDim2.new(0, 0, 0, 76)
 modeLabel.BackgroundTransparency = 1
-modeLabel.Text = hypershotMode and "Mode: Hypershot (body aim)" or "Mode: Default (head aim)"
+modeLabel.Text = hypershotMode and "Mode: body/root aim" or "Mode: head/torso aim"
 modeLabel.TextColor3 = Color3.fromRGB(180,180,195)
 modeLabel.Font = Enum.Font.Gotham
 modeLabel.TextSize = 13
@@ -414,4 +434,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("AisbergHub Visual (ESP + Aimbot, Hypershot mode) loaded. Press K to open, toggle ESP, hold RMB for aimbot.")
+print("AisbergHub Visual (ESP + universal Aimbot) loaded. Press K to open, toggle ESP, hold RMB for aimbot.")
