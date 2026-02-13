@@ -1,4 +1,4 @@
---=== AisbergHub Soft Menu (step 1–4) ===--
+--=== AisbergHub Soft Menu (v2: Smooth, AntiAFK, Players TP, Info) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -14,7 +14,7 @@ local RunService = game:GetService("RunService")
 
 local lp = Players.LocalPlayer
 
---================= UTILS =================--
+--================= HELPERS =================--
 
 local function getHumanoid()
     local char = lp.Character or lp.CharacterAdded:Wait()
@@ -26,15 +26,14 @@ local function getHRP()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
---================= FEATURES: Speed / ESP / TP / InfJump =================--
+--================= FEATURES =================--
 
+-- Speed
 local currentSpeed = 16
 
 local function applySpeed()
     local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = currentSpeed
-    end
+    if hum then hum.WalkSpeed = currentSpeed end
 end
 
 local function setSpeedFromValue(val)
@@ -42,7 +41,7 @@ local function setSpeedFromValue(val)
     applySpeed()
 end
 
--- ESP
+-- ESP: ты зелёный, остальные красные
 local espEnabled = false
 
 local function clearESP()
@@ -76,9 +75,9 @@ local function toggleESP()
     espEnabled = not espEnabled
     if not espEnabled then
         clearESP()
-    else
-        refreshESP()
+        return
     end
+    refreshESP()
 end
 
 Players.PlayerAdded:Connect(function(plr)
@@ -90,12 +89,12 @@ Players.PlayerAdded:Connect(function(plr)
     end)
 end)
 
--- TP к ближайшему
+-- TP to nearest
 local function tpToNearest()
     local hrp = getHRP()
     if not hrp then return end
-    local closest, dist = nil, math.huge
 
+    local closest, dist = nil, math.huge
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
             local d = (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
@@ -106,7 +105,7 @@ local function tpToNearest()
     end
 
     if closest and closest.Character and closest.Character:FindFirstChild("HumanoidRootPart") then
-        hrp.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+        hrp.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
     end
 end
 
@@ -130,38 +129,32 @@ local function toggleInfJump()
     end
 end
 
---================= FEATURE 3: AntiAFK =================--
+-- AntiAFK: двигаем камеру
+local antiAfkEnabled = false
+local antiAfkConnection
 
-local antiAFKEnabled = false
-local antiAFKConn
-local angle = 0
-
-local function setAntiAFK(on)
-    antiAFKEnabled = on
-    if antiAFKConn then
-        antiAFKConn:Disconnect()
-        antiAFKConn = nil
+local function toggleAntiAfk()
+    antiAfkEnabled = not antiAfkEnabled
+    if antiAfkConnection then
+        antiAfkConnection:Disconnect()
+        antiAfkConnection = nil
     end
-    if antiAFKEnabled then
+    if antiAfkEnabled then
         local cam = workspace.CurrentCamera
-        antiAFKConn = RunService.RenderStepped:Connect(function(dt)
-            if not cam then return end
-            angle += dt * 0.4
-            local hrp = getHRP()
-            if hrp then
-                local offset = CFrame.new(0, 3, 10) * CFrame.Angles(0, angle, 0)
-                cam.CFrame = CFrame.new(hrp.Position) * offset
+        local t = 0
+        antiAfkConnection = RunService.Heartbeat:Connect(function(dt)
+            t = t + dt
+            if t >= 5 then
+                t = 0
+                if cam then
+                    cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(10), 0)
+                end
             end
-        end)
-        local vu = game:GetService("VirtualUser")
-        lp.Idled:Connect(function()
-            vu:CaptureController()
-            vu:ClickButton2(Vector2.new())
         end)
     end
 end
 
---================= GUI BASE (1: полупрозрачный фон) =================--
+--================= GUI BASE =================--
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "AisbergHubUI"
@@ -170,12 +163,12 @@ gui.IgnoreGuiInset = true
 gui.Parent = lp:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-frame.BackgroundTransparency = 0.3 -- полу‑прозрачный фон
+frame.BackgroundColor3 = Color3.fromRGB(20,20,25)
 frame.BorderSizePixel = 0
 frame.Size = UDim2.new(0, 420, 0, 260)
-frame.Position = UDim2.new(0.5, -210, 1, 10)
+frame.Position = UDim2.new(0.5, -10, 0.5, -10) -- старт для анимации
 frame.Visible = false
+frame.BackgroundTransparency = 1
 frame.Parent = gui
 
 local corner = Instance.new("UICorner", frame)
@@ -186,7 +179,7 @@ shadow.Name = "Shadow"
 shadow.BackgroundTransparency = 1
 shadow.Image = "rbxassetid://5028857084"
 shadow.ImageColor3 = Color3.new(0,0,0)
-shadow.ImageTransparency = 0.5
+shadow.ImageTransparency = 0.4
 shadow.ScaleType = Enum.ScaleType.Slice
 shadow.SliceCenter = Rect.new(24,24,276,276)
 shadow.Size = UDim2.new(1, 30, 1, 30)
@@ -199,7 +192,7 @@ title.Size = UDim2.new(1, -60, 0, 30)
 title.Position = UDim2.new(0, 10, 0, 5)
 title.BackgroundTransparency = 1
 title.Text = "AisbergHub"
-title.TextColor3 = Color3.fromRGB(230, 230, 240)
+title.TextColor3 = Color3.fromRGB(230,230,240)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
 title.TextXAlignment = Enum.TextXAlignment.Left
@@ -209,10 +202,10 @@ title.Parent = frame
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 24, 0, 24)
 closeBtn.Position = UDim2.new(1, -30, 0, 6)
-closeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+closeBtn.BackgroundColor3 = Color3.fromRGB(40,40,50)
 closeBtn.BorderSizePixel = 0
 closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(230, 230, 240)
+closeBtn.TextColor3 = Color3.fromRGB(230,230,240)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 16
 closeBtn.TextTransparency = 1
@@ -269,7 +262,7 @@ infoTabBtn.AutoButtonColor = false
 infoTabBtn.Parent = tabsFrame
 Instance.new("UICorner", infoTabBtn).CornerRadius = UDim.new(0, 6)
 
---================= MAIN TAB (Speed / ESP / TP / InfJump / AntiAFK) =================--
+--================= MAIN PAGE =================--
 
 local mainPage = Instance.new("Frame")
 mainPage.Size = UDim2.new(1, -20, 1, -80)
@@ -277,7 +270,108 @@ mainPage.Position = UDim2.new(0, 10, 0, 70)
 mainPage.BackgroundTransparency = 1
 mainPage.Parent = frame
 
--- Speed slider
+-- ESP / TP / Inf Jump
+local espBtn = Instance.new("TextButton")
+espBtn.Size = UDim2.new(0, 170, 0, 30)
+espBtn.Position = UDim2.new(0, 10, 0, 0)
+espBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+espBtn.BorderSizePixel = 0
+espBtn.Text = "ESP: OFF"
+espBtn.TextColor3 = Color3.fromRGB(230,230,240)
+espBtn.Font = Enum.Font.Gotham
+espBtn.TextSize = 16
+espBtn.TextTransparency = 1
+espBtn.AutoButtonColor = false
+espBtn.Parent = mainPage
+Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 8)
+
+local tpBtn = Instance.new("TextButton")
+tpBtn.Size = UDim2.new(0, 170, 0, 30)
+tpBtn.Position = UDim2.new(0, 10, 0, 40)
+tpBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+tpBtn.BorderSizePixel = 0
+tpBtn.Text = "TP к ближайшему"
+tpBtn.TextColor3 = Color3.fromRGB(230,230,240)
+tpBtn.Font = Enum.Font.Gotham
+tpBtn.TextSize = 16
+tpBtn.TextTransparency = 1
+tpBtn.AutoButtonColor = false
+tpBtn.Parent = mainPage
+Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 8)
+
+local infBtn = Instance.new("TextButton")
+infBtn.Size = UDim2.new(0, 170, 0, 30)
+infBtn.Position = UDim2.new(0, 10, 0, 80)
+infBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+infBtn.BorderSizePixel = 0
+infBtn.Text = "Infinite Jump: OFF"
+infBtn.TextColor3 = Color3.fromRGB(230,230,240)
+infBtn.Font = Enum.Font.Gotham
+infBtn.TextSize = 16
+infBtn.TextTransparency = 1
+infBtn.AutoButtonColor = false
+infBtn.Parent = mainPage
+Instance.new("UICorner", infBtn).CornerRadius = UDim.new(0, 8)
+
+-- AntiAFK блок
+local antiAfkFrame = Instance.new("Frame")
+antiAfkFrame.Size = UDim2.new(0, 170, 0, 50)
+antiAfkFrame.Position = UDim2.new(0, 10, 0, 120)
+antiAfkFrame.BackgroundColor3 = Color3.fromRGB(25,25,35)
+antiAfkFrame.BorderSizePixel = 0
+antiAfkFrame.Parent = mainPage
+Instance.new("UICorner", antiAfkFrame).CornerRadius = UDim.new(0, 8)
+
+local antiAfkTitle = Instance.new("TextLabel")
+antiAfkTitle.Size = UDim2.new(1, -10, 0, 20)
+antiAfkTitle.Position = UDim2.new(0, 5, 0, 5)
+antiAfkTitle.BackgroundTransparency = 1
+antiAfkTitle.Text = "Aisberg AntiAFK"
+antiAfkTitle.TextColor3 = Color3.fromRGB(230,230,240)
+antiAfkTitle.Font = Enum.Font.GothamBold
+antiAfkTitle.TextSize = 14
+antiAfkTitle.TextTransparency = 1
+antiAfkTitle.TextXAlignment = Enum.TextXAlignment.Left
+antiAfkTitle.Parent = antiAfkFrame
+
+local antiAfkStatus = Instance.new("TextLabel")
+antiAfkStatus.Size = UDim2.new(1, -10, 0, 20)
+antiAfkStatus.Position = UDim2.new(0, 5, 0, 25)
+antiAfkStatus.BackgroundTransparency = 1
+antiAfkStatus.Text = "Status: Inactive"
+antiAfkStatus.TextColor3 = Color3.fromRGB(180,180,200)
+antiAfkStatus.Font = Enum.Font.Gotham
+antiAfkStatus.TextSize = 13
+antiAfkStatus.TextTransparency = 1
+antiAfkStatus.TextXAlignment = Enum.TextXAlignment.Left
+antiAfkStatus.Parent = antiAfkFrame
+
+local antiAfkBtn = Instance.new("TextButton")
+antiAfkBtn.Size = UDim2.new(0, 80, 0, 24)
+antiAfkBtn.Position = UDim2.new(1, -90, 0, 13)
+antiAfkBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+antiAfkBtn.BorderSizePixel = 0
+antiAfkBtn.Text = "Toggle"
+antiAfkBtn.TextColor3 = Color3.fromRGB(230,230,240)
+antiAfkBtn.Font = Enum.Font.Gotham
+antiAfkBtn.TextSize = 14
+antiAfkBtn.TextTransparency = 1
+antiAfkBtn.AutoButtonColor = false
+antiAfkBtn.Parent = antiAfkFrame
+Instance.new("UICorner", antiAfkBtn).CornerRadius = UDim.new(0, 6)
+
+antiAfkBtn.MouseButton1Click:Connect(function()
+    toggleAntiAfk()
+    if antiAfkEnabled then
+        antiAfkStatus.Text = "Status: Active"
+        antiAfkStatus.TextColor3 = Color3.fromRGB(120,220,120)
+    else
+        antiAfkStatus.Text = "Status: Inactive"
+        antiAfkStatus.TextColor3 = Color3.fromRGB(180,180,200)
+    end
+end)
+
+-- Speed label / slider
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 170, 0, 20)
 speedLabel.Position = UDim2.new(0, 220, 0, 0)
@@ -292,7 +386,7 @@ speedLabel.Parent = mainPage
 local sliderBar = Instance.new("Frame")
 sliderBar.Size = UDim2.new(0, 170, 0, 6)
 sliderBar.Position = UDim2.new(0, 220, 0, 25)
-sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+sliderBar.BackgroundColor3 = Color3.fromRGB(40,40,60)
 sliderBar.BorderSizePixel = 0
 sliderBar.Parent = mainPage
 Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(0, 3)
@@ -300,7 +394,7 @@ Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(0, 3)
 local sliderFill = Instance.new("Frame")
 sliderFill.Size = UDim2.new(0, 0, 1, 0)
 sliderFill.Position = UDim2.new(0, 0, 0, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+sliderFill.BackgroundColor3 = Color3.fromRGB(100,180,255)
 sliderFill.BorderSizePixel = 0
 sliderFill.Parent = sliderBar
 Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0, 3)
@@ -308,7 +402,7 @@ Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0, 3)
 local sliderKnob = Instance.new("Frame")
 sliderKnob.Size = UDim2.new(0, 10, 0, 16)
 sliderKnob.Position = UDim2.new(0, 0, 0, -5)
-sliderKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 255)
+sliderKnob.BackgroundColor3 = Color3.fromRGB(200,200,255)
 sliderKnob.BorderSizePixel = 0
 sliderKnob.Parent = sliderBar
 Instance.new("UICorner", sliderKnob).CornerRadius = UDim.new(1, 0)
@@ -346,97 +440,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ESP / TP / InfJump buttons
-local espBtn = Instance.new("TextButton")
-espBtn.Size = UDim2.new(0, 190, 0, 30)
-espBtn.Position = UDim2.new(0, 10, 0, 0)
-espBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-espBtn.BorderSizePixel = 0
-espBtn.Text = "ESP: OFF"
-espBtn.TextColor3 = Color3.fromRGB(230,230,240)
-espBtn.Font = Enum.Font.Gotham
-espBtn.TextSize = 16
-espBtn.TextTransparency = 1
-espBtn.AutoButtonColor = false
-espBtn.Parent = mainPage
-Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 8)
-
-local tpBtn = Instance.new("TextButton")
-tpBtn.Size = UDim2.new(0, 190, 0, 30)
-tpBtn.Position = UDim2.new(0, 10, 0, 40)
-tpBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-tpBtn.BorderSizePixel = 0
-tpBtn.Text = "TP к ближайшему"
-tpBtn.TextColor3 = Color3.fromRGB(230,230,240)
-tpBtn.Font = Enum.Font.Gotham
-tpBtn.TextSize = 16
-tpBtn.TextTransparency = 1
-tpBtn.AutoButtonColor = false
-tpBtn.Parent = mainPage
-Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 8)
-
-local infBtn = Instance.new("TextButton")
-infBtn.Size = UDim2.new(0, 190, 0, 30)
-infBtn.Position = UDim2.new(0, 10, 0, 80)
-infBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-infBtn.BorderSizePixel = 0
-infBtn.Text = "Infinite Jump: OFF"
-infBtn.TextColor3 = Color3.fromRGB(230,230,240)
-infBtn.Font = Enum.Font.Gotham
-infBtn.TextSize = 16
-infBtn.TextTransparency = 1
-infBtn.AutoButtonColor = false
-infBtn.Parent = mainPage
-Instance.new("UICorner", infBtn).CornerRadius = UDim.new(0, 8)
-
--- FEATURE 3: AntiAFK UI
-local aaFrame = Instance.new("Frame")
-aaFrame.Size = UDim2.new(0, 190, 0, 60)
-aaFrame.Position = UDim2.new(0, 10, 0, 120)
-aaFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-aaFrame.BorderSizePixel = 0
-aaFrame.Parent = mainPage
-Instance.new("UICorner", aaFrame).CornerRadius = UDim.new(0, 8)
-
-local aaTitle = Instance.new("TextLabel")
-aaTitle.Size = UDim2.new(1, -10, 0, 20)
-aaTitle.Position = UDim2.new(0, 5, 0, 5)
-aaTitle.BackgroundTransparency = 1
-aaTitle.Text = "Aisberg AntiAFK"
-aaTitle.TextColor3 = Color3.fromRGB(230,230,240)
-aaTitle.Font = Enum.Font.GothamBold
-aaTitle.TextSize = 14
-aaTitle.TextXAlignment = Enum.TextXAlignment.Left
-aaTitle.TextTransparency = 1
-aaTitle.Parent = aaFrame
-
-local aaStatus = Instance.new("TextLabel")
-aaStatus.Size = UDim2.new(1, -10, 0, 18)
-aaStatus.Position = UDim2.new(0, 5, 0, 28)
-aaStatus.BackgroundTransparency = 1
-aaStatus.Text = "Status: Inactive"
-aaStatus.TextColor3 = Color3.fromRGB(200,200,210)
-aaStatus.Font = Enum.Font.Gotham
-aaStatus.TextSize = 13
-aaStatus.TextXAlignment = Enum.TextXAlignment.Left
-aaStatus.TextTransparency = 1
-aaStatus.Parent = aaFrame
-
-local aaToggleBtn = Instance.new("TextButton")
-aaToggleBtn.Size = UDim2.new(0, 70, 0, 20)
-aaToggleBtn.Position = UDim2.new(1, -80, 0, 28)
-aaToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
-aaToggleBtn.BorderSizePixel = 0
-aaToggleBtn.Text = "Toggle"
-aaToggleBtn.TextColor3 = Color3.fromRGB(230,230,240)
-aaToggleBtn.Font = Enum.Font.Gotham
-aaToggleBtn.TextSize = 12
-aaToggleBtn.TextTransparency = 1
-aaToggleBtn.AutoButtonColor = false
-aaToggleBtn.Parent = aaFrame
-Instance.new("UICorner", aaToggleBtn).CornerRadius = UDim.new(0, 6)
-
---================= PLAYERS TAB (4: TP к конкретным игрокам) =================--
+--================= PLAYERS PAGE =================--
 
 local playersPage = Instance.new("Frame")
 playersPage.Size = UDim2.new(1, -20, 1, -80)
@@ -456,9 +460,23 @@ playersLabel.TextSize = 14
 playersLabel.TextTransparency = 1
 playersLabel.Parent = playersPage
 
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -10, 0, 24)
+searchBox.Position = UDim2.new(0, 5, 0, 25)
+searchBox.BackgroundColor3 = Color3.fromRGB(25,25,35)
+searchBox.BorderSizePixel = 0
+searchBox.PlaceholderText = "Search player..."
+searchBox.Text = ""
+searchBox.TextColor3 = Color3.fromRGB(230,230,240)
+searchBox.Font = Enum.Font.Gotham
+searchBox.TextSize = 14
+searchBox.TextTransparency = 1
+searchBox.Parent = playersPage
+Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
+
 local playersScroll = Instance.new("ScrollingFrame")
-playersScroll.Size = UDim2.new(1, -10, 1, -30)
-playersScroll.Position = UDim2.new(0, 5, 0, 25)
+playersScroll.Size = UDim2.new(1, -10, 1, -60)
+playersScroll.Position = UDim2.new(0, 5, 0, 55)
 playersScroll.BackgroundTransparency = 1
 playersScroll.BorderSizePixel = 0
 playersScroll.CanvasSize = UDim2.new(0,0,0,0)
@@ -474,28 +492,32 @@ local function rebuildPlayersList()
     playersScroll:ClearAllChildren()
     playersLayout.Parent = playersScroll
 
+    local query = string.lower(searchBox.Text or "")
+
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= lp then
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, -4, 0, 24)
-            btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
-            btn.BorderSizePixel = 0
-            btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Text = plr.Name
-            btn.TextColor3 = Color3.fromRGB(230,230,240)
-            btn.Font = Enum.Font.Gotham
-            btn.TextSize = 14
-            btn.TextTransparency = 1
-            btn.AutoButtonColor = false
-            btn.Parent = playersScroll
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+            if query == "" or string.find(string.lower(plr.Name), query, 1, true) then
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1, -4, 0, 24)
+                btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
+                btn.BorderSizePixel = 0
+                btn.TextXAlignment = Enum.TextXAlignment.Left
+                btn.Text = plr.Name
+                btn.TextColor3 = Color3.fromRGB(230,230,240)
+                btn.Font = Enum.Font.Gotham
+                btn.TextSize = 14
+                btn.TextTransparency = 1
+                btn.AutoButtonColor = false
+                btn.Parent = playersScroll
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-            btn.MouseButton1Click:Connect(function()
-                local hrp = getHRP()
-                if hrp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    hrp.CFrame = plr.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
-                end
-            end)
+                btn.MouseButton1Click:Connect(function()
+                    local hrp = getHRP()
+                    if hrp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                        hrp.CFrame = plr.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+                    end
+                end)
+            end
         end
     end
 
@@ -504,8 +526,9 @@ end
 
 Players.PlayerAdded:Connect(rebuildPlayersList)
 Players.PlayerRemoving:Connect(rebuildPlayersList)
+searchBox:GetPropertyChangedSignal("Text"):Connect(rebuildPlayersList)
 
---================= INFO TAB =================--
+--================= INFO PAGE =================--
 
 local infoPage = Instance.new("Frame")
 infoPage.Size = UDim2.new(1, -20, 1, -80)
@@ -606,7 +629,7 @@ end)
 
 setActiveTab("Main")
 
---================= ANIMATION (2: плавное уменьшение/увеличение) =================--
+--================= ANIMATION (Size + Position + Fade) =================--
 
 local isVisible = false
 local tweenTime = 0.35
@@ -615,19 +638,24 @@ local direction = Enum.EasingDirection.Out
 
 local function fadeIn()
     frame.Visible = true
-    frame.Size = UDim2.new(0, 0, 0, 0)
-    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.Size = UDim2.new(0, 20, 0, 20)
+    frame.Position = UDim2.new(0.5, -10, 0.5, -10)
+    frame.BackgroundTransparency = 1
+
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
+        Position = UDim2.new(0.5, -210, 0.5, -130),
         Size = UDim2.new(0, 420, 0, 260),
-        Position = UDim2.new(0.5, -210, 0.5, -130)
+        BackgroundTransparency = 0
     }):Play()
 
     local elems = {
         title, closeBtn,
         mainTabBtn, playersTabBtn, infoTabBtn,
-        speedLabel, espBtn, tpBtn, infBtn,
-        aaTitle, aaStatus, aaToggleBtn,
-        playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
+        espBtn, tpBtn, infBtn,
+        antiAfkTitle, antiAfkStatus, antiAfkBtn,
+        speedLabel,
+        playersLabel, searchBox,
+        infoTitle, posLabel, speedInfoLabel, jpLabel
     }
 
     for _, ui in ipairs(elems) do
@@ -637,16 +665,19 @@ end
 
 local function fadeOut(callback)
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0)
+        Position = UDim2.new(0.5, -10, 0.5, -10),
+        Size = UDim2.new(0, 20, 0, 20),
+        BackgroundTransparency = 1
     }):Play()
 
     local elems = {
         title, closeBtn,
         mainTabBtn, playersTabBtn, infoTabBtn,
-        speedLabel, espBtn, tpBtn, infBtn,
-        aaTitle, aaStatus, aaToggleBtn,
-        playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
+        espBtn, tpBtn, infBtn,
+        antiAfkTitle, antiAfkStatus, antiAfkBtn,
+        speedLabel,
+        playersLabel, searchBox,
+        infoTitle, posLabel, speedInfoLabel, jpLabel
     }
 
     for _, ui in ipairs(elems) do
@@ -675,7 +706,7 @@ end)
 espBtn.MouseButton1Click:Connect(function()
     toggleESP()
     espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
-    espBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
+    espBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(80,40,40) or Color3.fromRGB(35,35,50)
 end)
 
 tpBtn.MouseButton1Click:Connect(function()
@@ -685,13 +716,7 @@ end)
 infBtn.MouseButton1Click:Connect(function()
     toggleInfJump()
     infBtn.Text = infJumpEnabled and "Infinite Jump: ON" or "Infinite Jump: OFF"
-    infBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(80, 40, 80) or Color3.fromRGB(35, 35, 50)
-end)
-
-aaToggleBtn.MouseButton1Click:Connect(function()
-    setAntiAFK(not antiAFKEnabled)
-    aaStatus.Text = "Status: " .. (antiAFKEnabled and "Active" or "Inactive")
-    aaStatus.TextColor3 = antiAFKEnabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(200,200,210)
+    infBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(80,40,80) or Color3.fromRGB(35,35,50)
 end)
 
 --================= KEYBIND (K) =================--
@@ -708,4 +733,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("AisbergHub загружен. Нажми K для меню.")
+print("AisbergHub v2 загружен. Нажми K для меню.")
