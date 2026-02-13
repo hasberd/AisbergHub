@@ -1,4 +1,4 @@
---=== AisbergHub Soft Menu (Xeno-ready) ===--
+--=== AisbergHub Soft Menu (Full) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -10,34 +10,73 @@ end
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local lp = Players.LocalPlayer
 
 --================= FEATURES =================--
 
-local function setSpeed(enabled)
+local currentSpeed = 16
+
+local function applySpeed()
     local char = lp.Character or lp.CharacterAdded:Wait()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
-    hum.WalkSpeed = enabled and 50 or 16
+    hum.WalkSpeed = currentSpeed
 end
 
-local function toggleESP()
+local function setSpeedFromValue(val)
+    currentSpeed = math.clamp(val, 8, 100)
+    applySpeed()
+end
+
+-- ESP: ты зелёный, остальные красные
+local espEnabled = false
+
+local function clearESP()
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= lp and plr.Character then
+        if plr.Character then
             local existing = plr.Character:FindFirstChild("AisbergESP")
-            if existing then
-                existing:Destroy()
-            else
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "AisbergESP"
-                highlight.FillColor = Color3.new(0,1,0)
-                highlight.OutlineColor = Color3.new(1,1,1)
-                highlight.Parent = plr.Character
-            end
+            if existing then existing:Destroy() end
         end
     end
 end
+
+local function refreshESP()
+    clearESP()
+    if not espEnabled then return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "AisbergESP"
+            if plr == lp then
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+            else
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            end
+            highlight.OutlineColor = Color3.new(1,1,1)
+            highlight.Parent = plr.Character
+        end
+    end
+end
+
+local function toggleESP()
+    espEnabled = not espEnabled
+    if not espEnabled then
+        clearESP()
+        return
+    end
+    refreshESP()
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        if espEnabled then
+            task.wait(1)
+            refreshESP()
+        end
+    end)
+end)
 
 local function tpToNearest()
     local char = lp.Character or lp.CharacterAdded:Wait()
@@ -78,7 +117,7 @@ local function toggleInfJump()
     end
 end
 
---================= GUI =================--
+--================= GUI BASE =================--
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "AisbergHubUI"
@@ -89,8 +128,8 @@ gui.Parent = lp:WaitForChild("PlayerGui")
 local frame = Instance.new("Frame")
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 frame.BorderSizePixel = 0
-frame.Size = UDim2.new(0, 360, 0, 220)
-frame.Position = UDim2.new(0.5, -180, 1, 10) -- start off-screen bottom
+frame.Size = UDim2.new(0, 380, 0, 280)
+frame.Position = UDim2.new(0.5, -190, 1, 10)
 frame.Visible = false
 frame.BackgroundTransparency = 1
 frame.Parent = gui
@@ -179,28 +218,86 @@ hideBtn.AutoButtonColor = false
 hideBtn.Parent = frame
 Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 8)
 
--- Feature buttons
-local speedOn = false
-local speedBtn = Instance.new("TextButton")
-speedBtn.Size = UDim2.new(0, 170, 0, 30)
-speedBtn.Position = UDim2.new(0, 180, 0, 40)
-speedBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-speedBtn.BorderSizePixel = 0
-speedBtn.Text = "Speed: OFF"
-speedBtn.TextColor3 = Color3.fromRGB(230,230,240)
-speedBtn.Font = Enum.Font.Gotham
-speedBtn.TextSize = 16
-speedBtn.TextTransparency = 1
-speedBtn.AutoButtonColor = false
-speedBtn.Parent = frame
-Instance.new("UICorner", speedBtn).CornerRadius = UDim.new(0, 8)
+--================= SPEED SLIDER =================--
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 170, 0, 20)
+speedLabel.Position = UDim2.new(0, 200, 0, 30)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Speed: " .. currentSpeed
+speedLabel.TextColor3 = Color3.fromRGB(230,230,240)
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextSize = 14
+speedLabel.TextTransparency = 1
+speedLabel.Parent = frame
+
+local sliderBar = Instance.new("Frame")
+sliderBar.Size = UDim2.new(0, 170, 0, 6)
+sliderBar.Position = UDim2.new(0, 200, 0, 55)
+sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+sliderBar.BorderSizePixel = 0
+sliderBar.BackgroundTransparency = 0
+sliderBar.Parent = frame
+Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(0, 3)
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0, 0, 1, 0)
+sliderFill.Position = UDim2.new(0, 0, 0, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBar
+Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0, 3)
+
+local sliderKnob = Instance.new("Frame")
+sliderKnob.Size = UDim2.new(0, 10, 0, 16)
+sliderKnob.Position = UDim2.new(0, 0, 0, -5)
+sliderKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 255)
+sliderKnob.BorderSizePixel = 0
+sliderKnob.Parent = sliderBar
+Instance.new("UICorner", sliderKnob).CornerRadius = UDim.new(1, 0)
+
+local dragging = false
+
+local function updateSliderFromX(x)
+    local absPos = sliderBar.AbsolutePosition.X
+    local absSize = sliderBar.AbsoluteSize.X
+    local rel = math.clamp((x - absPos) / absSize, 0, 1)
+    local speed = 8 + (100 - 8) * rel
+    speed = math.floor(speed + 0.5)
+    currentSpeed = speed
+    applySpeed()
+    speedLabel.Text = "Speed: " .. tostring(speed)
+    sliderFill.Size = UDim2.new(rel, 0, 1, 0)
+    sliderKnob.Position = UDim2.new(rel, -5, 0, -5)
+end
+
+sliderBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        updateSliderFromX(input.Position.X)
+    end
+end)
+
+sliderBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        updateSliderFromX(input.Position.X)
+    end
+end)
+
+--================= ESP / TP / INF JUMP BUTTONS =================--
 
 local espBtn = Instance.new("TextButton")
 espBtn.Size = UDim2.new(0, 170, 0, 30)
-espBtn.Position = UDim2.new(0, 180, 0, 80)
+espBtn.Position = UDim2.new(0, 200, 0, 80)
 espBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 espBtn.BorderSizePixel = 0
-espBtn.Text = "ESP TOGGLE"
+espBtn.Text = "ESP: OFF"
 espBtn.TextColor3 = Color3.fromRGB(230,230,240)
 espBtn.Font = Enum.Font.Gotham
 espBtn.TextSize = 16
@@ -211,7 +308,7 @@ Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 8)
 
 local tpBtn = Instance.new("TextButton")
 tpBtn.Size = UDim2.new(0, 170, 0, 30)
-tpBtn.Position = UDim2.new(0, 180, 0, 120)
+tpBtn.Position = UDim2.new(0, 200, 0, 120)
 tpBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 tpBtn.BorderSizePixel = 0
 tpBtn.Text = "TP к ближайшему"
@@ -225,7 +322,7 @@ Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 8)
 
 local infBtn = Instance.new("TextButton")
 infBtn.Size = UDim2.new(0, 170, 0, 30)
-infBtn.Position = UDim2.new(0, 180, 0, 160)
+infBtn.Position = UDim2.new(0, 200, 0, 160)
 infBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 infBtn.BorderSizePixel = 0
 infBtn.Text = "Infinite Jump: OFF"
@@ -236,6 +333,144 @@ infBtn.TextTransparency = 1
 infBtn.AutoButtonColor = false
 infBtn.Parent = frame
 Instance.new("UICorner", infBtn).CornerRadius = UDim.new(0, 8)
+
+--================= Infinite Yield + Dex кнопки =================--
+
+local iyBtn = Instance.new("TextButton")
+iyBtn.Size = UDim2.new(0, 170, 0, 30)
+iyBtn.Position = UDim2.new(0, 200, 0, 200)
+iyBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+iyBtn.BorderSizePixel = 0
+iyBtn.Text = "Open Infinite Yield"
+iyBtn.TextColor3 = Color3.fromRGB(230,230,240)
+iyBtn.Font = Enum.Font.Gotham
+iyBtn.TextSize = 16
+iyBtn.TextTransparency = 1
+iyBtn.AutoButtonColor = false
+iyBtn.Parent = frame
+Instance.new("UICorner", iyBtn).CornerRadius = UDim.new(0, 8)
+
+local dexBtn = Instance.new("TextButton")
+dexBtn.Size = UDim2.new(0, 170, 0, 30)
+dexBtn.Position = UDim2.new(0, 200, 0, 240)
+dexBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+dexBtn.BorderSizePixel = 0
+dexBtn.Text = "Open Dex Explorer"
+dexBtn.TextColor3 = Color3.fromRGB(230,230,240)
+dexBtn.Font = Enum.Font.Gotham
+dexBtn.TextSize = 16
+dexBtn.TextTransparency = 1
+dexBtn.AutoButtonColor = false
+dexBtn.Parent = frame
+Instance.new("UICorner", dexBtn).CornerRadius = UDim.new(0, 8)
+
+--================= ReplicatedStorage Explorer =================--
+
+local rsFrame = Instance.new("Frame")
+rsFrame.Size = UDim2.new(0, 260, 0, 200)
+rsFrame.Position = UDim2.new(0, 10, 0, 140)
+rsFrame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+rsFrame.BorderSizePixel = 0
+rsFrame.Visible = false
+rsFrame.Parent = frame
+Instance.new("UICorner", rsFrame).CornerRadius = UDim.new(0, 8)
+
+local rsTitle = Instance.new("TextLabel")
+rsTitle.Size = UDim2.new(1, 0, 0, 20)
+rsTitle.Position = UDim2.new(0, 0, 0, 0)
+rsTitle.BackgroundTransparency = 1
+rsTitle.Text = "ReplicatedStorage"
+rsTitle.TextColor3 = Color3.fromRGB(230,230,240)
+rsTitle.Font = Enum.Font.GothamBold
+rsTitle.TextSize = 14
+rsTitle.Parent = rsFrame
+
+local rsScroll = Instance.new("ScrollingFrame")
+rsScroll.Size = UDim2.new(1, -10, 1, -30)
+rsScroll.Position = UDim2.new(0, 5, 0, 25)
+rsScroll.BackgroundTransparency = 1
+rsScroll.BorderSizePixel = 0
+rsScroll.CanvasSize = UDim2.new(0,0,0,0)
+rsScroll.ScrollBarThickness = 4
+rsScroll.Parent = rsFrame
+
+local rsLayout = Instance.new("UIListLayout", rsScroll)
+rsLayout.FillDirection = Enum.FillDirection.Vertical
+rsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rsLayout.Padding = UDim.new(0, 2)
+
+local function makeEntry(obj, indent)
+    indent = indent or 0
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -4, 0, 18)
+    btn.BackgroundColor3 = Color3.fromRGB(25,25,35)
+    btn.BorderSizePixel = 0
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(220,220,230)
+    btn.Parent = rsScroll
+
+    local prefix = string.rep("  ", indent)
+    btn.Text = prefix .. obj.Name .. " [" .. obj.ClassName .. "]"
+
+    local expanded = false
+    local childrenButtons = {}
+
+    local function toggle()
+        expanded = not expanded
+        if expanded then
+            for _, child in ipairs(obj:GetChildren()) do
+                local childBtn = makeEntry(child, indent + 1)
+                table.insert(childrenButtons, childBtn)
+            end
+        else
+            for _, b in ipairs(childrenButtons) do
+                b:Destroy()
+            end
+            childrenButtons = {}
+        end
+        rsScroll.CanvasSize = UDim2.new(0,0,0,rsLayout.AbsoluteContentSize.Y)
+    end
+
+    btn.MouseButton1Click:Connect(toggle)
+
+    return btn
+end
+
+local function rebuildRS()
+    rsScroll:ClearAllChildren()
+    rsLayout.Parent = rsScroll
+    for _, obj in ipairs(ReplicatedStorage:GetChildren()) do
+        makeEntry(obj, 0)
+    end
+    rsScroll.CanvasSize = UDim2.new(0,0,0,rsLayout.AbsoluteContentSize.Y)
+end
+
+local rsVisible = false
+
+local rsBtn = Instance.new("TextButton")
+rsBtn.Size = UDim2.new(0, 170, 0, 30)
+rsBtn.Position = UDim2.new(0, 10, 0, 160)
+rsBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+rsBtn.BorderSizePixel = 0
+rsBtn.Text = "ReplicatedStorage Explorer"
+rsBtn.TextColor3 = Color3.fromRGB(230,230,240)
+rsBtn.Font = Enum.Font.Gotham
+rsBtn.TextSize = 14
+rsBtn.TextTransparency = 1
+rsBtn.AutoButtonColor = false
+rsBtn.Parent = frame
+Instance.new("UICorner", rsBtn).CornerRadius = UDim.new(0, 8)
+
+rsBtn.MouseButton1Click:Connect(function()
+    rsVisible = not rsVisible
+    rsFrame.Visible = rsVisible
+    if rsVisible then
+        rebuildRS()
+    end
+end)
 
 --================= ANIMATION =================--
 
@@ -248,11 +483,16 @@ local direction = Enum.EasingDirection.Out
 local function fadeIn()
     frame.Visible = true
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Position = UDim2.new(0.5, -180, 0.5, -110),
+        Position = UDim2.new(0.5, -190, 0.5, -140),
         BackgroundTransparency = 0
     }):Play()
 
-    local elems = {title, fullBtn, normalBtn, hideBtn, closeBtn, speedBtn, espBtn, tpBtn, infBtn}
+    local elems = {
+        title, fullBtn, normalBtn, hideBtn, closeBtn,
+        speedLabel, espBtn, tpBtn, infBtn,
+        iyBtn, dexBtn, rsBtn
+    }
+
     for _, ui in ipairs(elems) do
         TweenService:Create(ui, TweenInfo.new(tweenTime), {TextTransparency = 0}):Play()
     end
@@ -260,11 +500,16 @@ end
 
 local function fadeOut(callback)
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Position = UDim2.new(0.5, -180, 1, 10),
+        Position = UDim2.new(0.5, -190, 1, 10),
         BackgroundTransparency = 1
     }):Play()
 
-    local elems = {title, fullBtn, normalBtn, hideBtn, closeBtn, speedBtn, espBtn, tpBtn, infBtn}
+    local elems = {
+        title, fullBtn, normalBtn, hideBtn, closeBtn,
+        speedLabel, espBtn, tpBtn, infBtn,
+        iyBtn, dexBtn, rsBtn
+    }
+
     for _, ui in ipairs(elems) do
         TweenService:Create(ui, TweenInfo.new(tweenTime), {TextTransparency = 1}):Play()
     end
@@ -278,8 +523,8 @@ end
 local function setNormal()
     isFullScreen = false
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Size = UDim2.new(0, 360, 0, 220),
-        Position = UDim2.new(0.5, -180, 0.5, -110)
+        Size = UDim2.new(0, 380, 0, 280),
+        Position = UDim2.new(0.5, -190, 0.5, -140)
     }):Play()
 end
 
@@ -319,15 +564,10 @@ closeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-speedBtn.MouseButton1Click:Connect(function()
-    speedOn = not speedOn
-    setSpeed(speedOn)
-    speedBtn.Text = speedOn and "Speed: ON" or "Speed: OFF"
-    speedBtn.BackgroundColor3 = speedOn and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35, 35, 50)
-end)
-
 espBtn.MouseButton1Click:Connect(function()
     toggleESP()
+    espBtn.Text = espEnabled and "ESP: ON" or "ESP: OFF"
+    espBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
 end)
 
 tpBtn.MouseButton1Click:Connect(function()
@@ -338,6 +578,22 @@ infBtn.MouseButton1Click:Connect(function()
     toggleInfJump()
     infBtn.Text = infJumpEnabled and "Infinite Jump: ON" or "Infinite Jump: OFF"
     infBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(80, 40, 80) or Color3.fromRGB(35, 35, 50)
+end)
+
+iyBtn.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end)
+
+dexBtn.MouseButton1Click:Connect(function()
+    if not getgenv or not getgenv().IY_LOADED then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        task.wait(2)
+    end
+    if getgenv and getgenv().IY and getgenv().IY.ExecuteCommand then
+        getgenv().IY.ExecuteCommand("dex")
+    else
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+    end
 end)
 
 --================= KEYBIND (K) =================--
@@ -354,4 +610,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("AisbergHub загружен. Нажми K, чтобы открыть меню.")
+print("AisbergHub загружен. Нажми K для меню.")
