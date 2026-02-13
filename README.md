@@ -1,6 +1,4 @@
---=== AisbergHub Soft Menu (AFK + Smooth Scale + TP List) ===--
-print("AisbergHub started")
-
+--=== AisbergHub Soft Menu (Clean + Players TP + Info) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -12,7 +10,6 @@ end
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
 local lp = Players.LocalPlayer
 
@@ -128,29 +125,6 @@ local function toggleInfJump()
     end
 end
 
--- AntiAFK: плавно крутим камеру
-local antiAFKEnabled = false
-local antiAFKConnection
-local cam = workspace.CurrentCamera
-
-local function toggleAntiAFK()
-    antiAFKEnabled = not antiAFKEnabled
-    if antiAFKConnection then
-        antiAFKConnection:Disconnect()
-        antiAFKConnection = nil
-    end
-    if antiAFKEnabled then
-        local t0 = tick()
-        antiAFKConnection = RunService.RenderStepped:Connect(function()
-            if cam then
-                local t = tick() - t0
-                local angle = math.sin(t * 0.5) * 0.15 -- лёгкое покачивание
-                cam.CFrame = cam.CFrame * CFrame.Angles(0, angle, 0)
-            end
-        end)
-    end
-end
-
 --================= GUI BASE =================--
 
 local gui = Instance.new("ScreenGui")
@@ -165,11 +139,8 @@ frame.BorderSizePixel = 0
 frame.Size = UDim2.new(0, 420, 0, 260)
 frame.Position = UDim2.new(0.5, -210, 1, 10)
 frame.Visible = false
-frame.BackgroundTransparency = 0.25 -- полупрозрачный фон
+frame.BackgroundTransparency = 1
 frame.Parent = gui
-
-local uiScale = Instance.new("UIScale", frame)
-uiScale.Scale = 0.8
 
 local corner = Instance.new("UICorner", frame)
 corner.CornerRadius = UDim.new(0, 10)
@@ -179,11 +150,11 @@ shadow.Name = "Shadow"
 shadow.BackgroundTransparency = 1
 shadow.Image = "rbxassetid://5028857084"
 shadow.ImageColor3 = Color3.new(0,0,0)
-shadow.ImageTransparency = 0.5
+shadow.ImageTransparency = 0.4
 shadow.ScaleType = Enum.ScaleType.Slice
 shadow.SliceCenter = Rect.new(24,24,276,276)
-shadow.Size = UDim2.new(1, 40, 1, 40)
-shadow.Position = UDim2.new(0, -20, 0, -20)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -15)
 shadow.ZIndex = 0
 shadow.Parent = frame
 
@@ -213,33 +184,54 @@ closeBtn.AutoButtonColor = false
 closeBtn.Parent = frame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
 
--- Tabs (Main / Players / Info)
+-- Tab buttons (Main / Players / Info)
 local tabsFrame = Instance.new("Frame")
 tabsFrame.Size = UDim2.new(0, 260, 0, 30)
 tabsFrame.Position = UDim2.new(0, 10, 0, 40)
 tabsFrame.BackgroundTransparency = 1
 tabsFrame.Parent = frame
 
-local function makeTabButton(text, x)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0, 80, 0, 24)
-    b.Position = UDim2.new(0, x, 0, 3)
-    b.BackgroundColor3 = Color3.fromRGB(30,30,45)
-    b.BorderSizePixel = 0
-    b.Text = text
-    b.TextColor3 = Color3.fromRGB(200,200,210)
-    b.Font = Enum.Font.Gotham
-    b.TextSize = 14
-    b.TextTransparency = 1
-    b.AutoButtonColor = false
-    b.Parent = tabsFrame
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-    return b
-end
+local mainTabBtn = Instance.new("TextButton")
+mainTabBtn.Size = UDim2.new(0, 80, 0, 24)
+mainTabBtn.Position = UDim2.new(0, 0, 0, 3)
+mainTabBtn.BackgroundColor3 = Color3.fromRGB(40,40,60)
+mainTabBtn.BorderSizePixel = 0
+mainTabBtn.Text = "Main"
+mainTabBtn.TextColor3 = Color3.fromRGB(230,230,240)
+mainTabBtn.Font = Enum.Font.Gotham
+mainTabBtn.TextSize = 14
+mainTabBtn.TextTransparency = 1
+mainTabBtn.AutoButtonColor = false
+mainTabBtn.Parent = tabsFrame
+Instance.new("UICorner", mainTabBtn).CornerRadius = UDim.new(0, 6)
 
-local mainTabBtn = makeTabButton("Main", 0)
-local playersTabBtn = makeTabButton("Players", 90)
-local infoTabBtn = makeTabButton("Info", 180)
+local playersTabBtn = Instance.new("TextButton")
+playersTabBtn.Size = UDim2.new(0, 80, 0, 24)
+playersTabBtn.Position = UDim2.new(0, 90, 0, 3)
+playersTabBtn.BackgroundColor3 = Color3.fromRGB(30,30,45)
+playersTabBtn.BorderSizePixel = 0
+playersTabBtn.Text = "Players"
+playersTabBtn.TextColor3 = Color3.fromRGB(200,200,210)
+playersTabBtn.Font = Enum.Font.Gotham
+playersTabBtn.TextSize = 14
+playersTabBtn.TextTransparency = 1
+playersTabBtn.AutoButtonColor = false
+playersTabBtn.Parent = tabsFrame
+Instance.new("UICorner", playersTabBtn).CornerRadius = UDim.new(0, 6)
+
+local infoTabBtn = Instance.new("TextButton")
+infoTabBtn.Size = UDim2.new(0, 80, 0, 24)
+infoTabBtn.Position = UDim2.new(0, 180, 0, 3)
+infoTabBtn.BackgroundColor3 = Color3.fromRGB(30,30,45)
+infoTabBtn.BorderSizePixel = 0
+infoTabBtn.Text = "Info"
+infoTabBtn.TextColor3 = Color3.fromRGB(200,200,210)
+infoTabBtn.Font = Enum.Font.Gotham
+infoTabBtn.TextSize = 14
+infoTabBtn.TextTransparency = 1
+infoTabBtn.AutoButtonColor = false
+infoTabBtn.Parent = tabsFrame
+Instance.new("UICorner", infoTabBtn).CornerRadius = UDim.new(0, 6)
 
 --================= MAIN TAB =================--
 
@@ -318,7 +310,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ESP / TP / InfJump
+-- ESP / TP / InfJump buttons
 local espBtn = Instance.new("TextButton")
 espBtn.Size = UDim2.new(0, 170, 0, 30)
 espBtn.Position = UDim2.new(0, 10, 0, 0)
@@ -361,54 +353,7 @@ infBtn.AutoButtonColor = false
 infBtn.Parent = mainPage
 Instance.new("UICorner", infBtn).CornerRadius = UDim.new(0, 8)
 
--- AntiAFK блок
-local afkFrame = Instance.new("Frame")
-afkFrame.Size = UDim2.new(0, 170, 0, 60)
-afkFrame.Position = UDim2.new(0, 10, 0, 120)
-afkFrame.BackgroundColor3 = Color3.fromRGB(25,25,35)
-afkFrame.BorderSizePixel = 0
-afkFrame.BackgroundTransparency = 0.1
-afkFrame.Parent = mainPage
-Instance.new("UICorner", afkFrame).CornerRadius = UDim.new(0, 8)
-
-local afkTitle = Instance.new("TextLabel")
-afkTitle.Size = UDim2.new(1, 0, 0, 20)
-afkTitle.Position = UDim2.new(0, 0, 0, 5)
-afkTitle.BackgroundTransparency = 1
-afkTitle.Text = "Aisberg AntiAFK"
-afkTitle.TextColor3 = Color3.fromRGB(230,230,240)
-afkTitle.Font = Enum.Font.GothamBold
-afkTitle.TextSize = 14
-afkTitle.TextTransparency = 1
-afkTitle.Parent = afkFrame
-
-local afkStatus = Instance.new("TextLabel")
-afkStatus.Size = UDim2.new(1, -10, 0, 16)
-afkStatus.Position = UDim2.new(0, 5, 0, 26)
-afkStatus.BackgroundTransparency = 1
-afkStatus.Text = "Status: Inactive"
-afkStatus.TextColor3 = Color3.fromRGB(200,200,210)
-afkStatus.Font = Enum.Font.Gotham
-afkStatus.TextSize = 13
-afkStatus.TextXAlignment = Enum.TextXAlignment.Left
-afkStatus.TextTransparency = 1
-afkStatus.Parent = afkFrame
-
-local afkBtn = Instance.new("TextButton")
-afkBtn.Size = UDim2.new(0, 80, 0, 20)
-afkBtn.Position = UDim2.new(1, -85, 1, -25)
-afkBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
-afkBtn.BorderSizePixel = 0
-afkBtn.Text = "Toggle"
-afkBtn.TextColor3 = Color3.fromRGB(230,230,240)
-afkBtn.Font = Enum.Font.Gotham
-afkBtn.TextSize = 13
-afkBtn.TextTransparency = 1
-afkBtn.AutoButtonColor = false
-afkBtn.Parent = afkFrame
-Instance.new("UICorner", afkBtn).CornerRadius = UDim.new(0, 6)
-
---================= PLAYERS TAB (TP к конкретным) =================--
+--================= PLAYERS TAB =================--
 
 local playersPage = Instance.new("Frame")
 playersPage.Size = UDim2.new(1, -20, 1, -80)
@@ -578,7 +523,7 @@ end)
 
 setActiveTab("Main")
 
---================= ANIMATION (fade + scale) =================--
+--================= ANIMATION =================--
 
 local isVisible = false
 local tweenTime = 0.35
@@ -587,22 +532,15 @@ local direction = Enum.EasingDirection.Out
 
 local function fadeIn()
     frame.Visible = true
-    frame.BackgroundTransparency = 1
-    uiScale.Scale = 0.8
-    frame.Position = UDim2.new(0.5, -210, 0.5, -130)
-
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        BackgroundTransparency = 0.25,
-    }):Play()
-    TweenService:Create(uiScale, TweenInfo.new(tweenTime, easing, direction), {
-        Scale = 1
+        Position = UDim2.new(0.5, -210, 0.5, -130),
+        BackgroundTransparency = 0
     }):Play()
 
     local elems = {
         title, closeBtn,
         mainTabBtn, playersTabBtn, infoTabBtn,
         speedLabel, espBtn, tpBtn, infBtn,
-        afkTitle, afkStatus, afkBtn,
         playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
     }
 
@@ -613,17 +551,14 @@ end
 
 local function fadeOut(callback)
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        BackgroundTransparency = 1,
-    }):Play()
-    TweenService:Create(uiScale, TweenInfo.new(tweenTime, easing, direction), {
-        Scale = 0.8
+        Position = UDim2.new(0.5, -210, 1, 10),
+        BackgroundTransparency = 1
     }):Play()
 
     local elems = {
         title, closeBtn,
         mainTabBtn, playersTabBtn, infoTabBtn,
         speedLabel, espBtn, tpBtn, infBtn,
-        afkTitle, afkStatus, afkBtn,
         playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
     }
 
@@ -664,17 +599,6 @@ infBtn.MouseButton1Click:Connect(function()
     toggleInfJump()
     infBtn.Text = infJumpEnabled and "Infinite Jump: ON" or "Infinite Jump: OFF"
     infBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(80, 40, 80) or Color3.fromRGB(35, 35, 50)
-end)
-
-afkBtn.MouseButton1Click:Connect(function()
-    toggleAntiAFK()
-    if antiAFKEnabled then
-        afkStatus.Text = "Status: Active"
-        afkStatus.TextColor3 = Color3.fromRGB(120,255,120)
-    else
-        afkStatus.Text = "Status: Inactive"
-        afkStatus.TextColor3 = Color3.fromRGB(200,200,210)
-    end
 end)
 
 --================= KEYBIND (K) =================--
