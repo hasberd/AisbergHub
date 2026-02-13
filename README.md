@@ -1,4 +1,4 @@
---=== AisbergHub Soft Menu (Clean + Players TP + Info) ===--
+--=== AisbergHub Soft Menu (Full) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -10,6 +10,7 @@ end
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local lp = Players.LocalPlayer
 
@@ -17,21 +18,11 @@ local lp = Players.LocalPlayer
 
 local currentSpeed = 16
 
-local function getHumanoid()
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    return char:FindFirstChildOfClass("Humanoid")
-end
-
-local function getHRP()
-    local char = lp.Character or lp.CharacterAdded:Wait()
-    return char:FindFirstChild("HumanoidRootPart")
-end
-
 local function applySpeed()
-    local hum = getHumanoid()
-    if hum then
-        hum.WalkSpeed = currentSpeed
-    end
+    local char = lp.Character or lp.CharacterAdded:Wait()
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    hum.WalkSpeed = currentSpeed
 end
 
 local function setSpeedFromValue(val)
@@ -88,7 +79,8 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 local function tpToNearest()
-    local hrp = getHRP()
+    local char = lp.Character or lp.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     local closest, dist = nil, math.huge
@@ -116,10 +108,10 @@ local function toggleInfJump()
         infJumpConnection = nil
     end
     if infJumpEnabled then
-        infJumpConnection = UserInputService.JumpRequest:Connect(function()
-            local hum = getHumanoid()
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        local UIS = UserInputService
+        infJumpConnection = UIS.JumpRequest:Connect(function()
+            if lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
+                lp.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
     end
@@ -136,8 +128,8 @@ gui.Parent = lp:WaitForChild("PlayerGui")
 local frame = Instance.new("Frame")
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 frame.BorderSizePixel = 0
-frame.Size = UDim2.new(0, 420, 0, 260)
-frame.Position = UDim2.new(0.5, -210, 1, 10)
+frame.Size = UDim2.new(0, 380, 0, 280)
+frame.Position = UDim2.new(0.5, -190, 1, 10)
 frame.Visible = false
 frame.BackgroundTransparency = 1
 frame.Parent = gui
@@ -184,81 +176,68 @@ closeBtn.AutoButtonColor = false
 closeBtn.Parent = frame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
 
--- Tab buttons (Main / Players / Info)
-local tabsFrame = Instance.new("Frame")
-tabsFrame.Size = UDim2.new(0, 260, 0, 30)
-tabsFrame.Position = UDim2.new(0, 10, 0, 40)
-tabsFrame.BackgroundTransparency = 1
-tabsFrame.Parent = frame
+local fullBtn = Instance.new("TextButton")
+fullBtn.Size = UDim2.new(0, 130, 0, 30)
+fullBtn.Position = UDim2.new(0, 10, 0, 40)
+fullBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+fullBtn.BorderSizePixel = 0
+fullBtn.Text = "Во весь экран"
+fullBtn.TextColor3 = Color3.fromRGB(230,230,240)
+fullBtn.Font = Enum.Font.Gotham
+fullBtn.TextSize = 16
+fullBtn.TextTransparency = 1
+fullBtn.AutoButtonColor = false
+fullBtn.Parent = frame
+Instance.new("UICorner", fullBtn).CornerRadius = UDim.new(0, 8)
 
-local mainTabBtn = Instance.new("TextButton")
-mainTabBtn.Size = UDim2.new(0, 80, 0, 24)
-mainTabBtn.Position = UDim2.new(0, 0, 0, 3)
-mainTabBtn.BackgroundColor3 = Color3.fromRGB(40,40,60)
-mainTabBtn.BorderSizePixel = 0
-mainTabBtn.Text = "Main"
-mainTabBtn.TextColor3 = Color3.fromRGB(230,230,240)
-mainTabBtn.Font = Enum.Font.Gotham
-mainTabBtn.TextSize = 14
-mainTabBtn.TextTransparency = 1
-mainTabBtn.AutoButtonColor = false
-mainTabBtn.Parent = tabsFrame
-Instance.new("UICorner", mainTabBtn).CornerRadius = UDim.new(0, 6)
+local normalBtn = Instance.new("TextButton")
+normalBtn.Size = UDim2.new(0, 160, 0, 30)
+normalBtn.Position = UDim2.new(0, 10, 0, 80)
+normalBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+normalBtn.BorderSizePixel = 0
+normalBtn.Text = "Обычный размер"
+normalBtn.TextColor3 = Color3.fromRGB(230,230,240)
+normalBtn.Font = Enum.Font.Gotham
+normalBtn.TextSize = 16
+normalBtn.TextTransparency = 1
+normalBtn.AutoButtonColor = false
+normalBtn.Parent = frame
+Instance.new("UICorner", normalBtn).CornerRadius = UDim.new(0, 8)
 
-local playersTabBtn = Instance.new("TextButton")
-playersTabBtn.Size = UDim2.new(0, 80, 0, 24)
-playersTabBtn.Position = UDim2.new(0, 90, 0, 3)
-playersTabBtn.BackgroundColor3 = Color3.fromRGB(30,30,45)
-playersTabBtn.BorderSizePixel = 0
-playersTabBtn.Text = "Players"
-playersTabBtn.TextColor3 = Color3.fromRGB(200,200,210)
-playersTabBtn.Font = Enum.Font.Gotham
-playersTabBtn.TextSize = 14
-playersTabBtn.TextTransparency = 1
-playersTabBtn.AutoButtonColor = false
-playersTabBtn.Parent = tabsFrame
-Instance.new("UICorner", playersTabBtn).CornerRadius = UDim.new(0, 6)
+local hideBtn = Instance.new("TextButton")
+hideBtn.Size = UDim2.new(0, 130, 0, 30)
+hideBtn.Position = UDim2.new(0, 10, 0, 120)
+hideBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+hideBtn.BorderSizePixel = 0
+hideBtn.Text = "Скрыть меню"
+hideBtn.TextColor3 = Color3.fromRGB(230,230,240)
+hideBtn.Font = Enum.Font.Gotham
+hideBtn.TextSize = 16
+hideBtn.TextTransparency = 1
+hideBtn.AutoButtonColor = false
+hideBtn.Parent = frame
+Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0, 8)
 
-local infoTabBtn = Instance.new("TextButton")
-infoTabBtn.Size = UDim2.new(0, 80, 0, 24)
-infoTabBtn.Position = UDim2.new(0, 180, 0, 3)
-infoTabBtn.BackgroundColor3 = Color3.fromRGB(30,30,45)
-infoTabBtn.BorderSizePixel = 0
-infoTabBtn.Text = "Info"
-infoTabBtn.TextColor3 = Color3.fromRGB(200,200,210)
-infoTabBtn.Font = Enum.Font.Gotham
-infoTabBtn.TextSize = 14
-infoTabBtn.TextTransparency = 1
-infoTabBtn.AutoButtonColor = false
-infoTabBtn.Parent = tabsFrame
-Instance.new("UICorner", infoTabBtn).CornerRadius = UDim.new(0, 6)
+--================= SPEED SLIDER =================--
 
---================= MAIN TAB =================--
-
-local mainPage = Instance.new("Frame")
-mainPage.Size = UDim2.new(1, -20, 1, -80)
-mainPage.Position = UDim2.new(0, 10, 0, 70)
-mainPage.BackgroundTransparency = 1
-mainPage.Parent = frame
-
--- Speed slider
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 170, 0, 20)
-speedLabel.Position = UDim2.new(0, 200, 0, 0)
+speedLabel.Position = UDim2.new(0, 200, 0, 30)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Text = "Speed: " .. currentSpeed
 speedLabel.TextColor3 = Color3.fromRGB(230,230,240)
 speedLabel.Font = Enum.Font.Gotham
 speedLabel.TextSize = 14
 speedLabel.TextTransparency = 1
-speedLabel.Parent = mainPage
+speedLabel.Parent = frame
 
 local sliderBar = Instance.new("Frame")
 sliderBar.Size = UDim2.new(0, 170, 0, 6)
-sliderBar.Position = UDim2.new(0, 200, 0, 25)
+sliderBar.Position = UDim2.new(0, 200, 0, 55)
 sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 sliderBar.BorderSizePixel = 0
-sliderBar.Parent = mainPage
+sliderBar.BackgroundTransparency = 0
+sliderBar.Parent = frame
 Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(0, 3)
 
 local sliderFill = Instance.new("Frame")
@@ -285,7 +264,8 @@ local function updateSliderFromX(x)
     local rel = math.clamp((x - absPos) / absSize, 0, 1)
     local speed = 8 + (100 - 8) * rel
     speed = math.floor(speed + 0.5)
-    setSpeedFromValue(speed)
+    currentSpeed = speed
+    applySpeed()
     speedLabel.Text = "Speed: " .. tostring(speed)
     sliderFill.Size = UDim2.new(rel, 0, 1, 0)
     sliderKnob.Position = UDim2.new(rel, -5, 0, -5)
@@ -310,10 +290,11 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ESP / TP / InfJump buttons
+--================= ESP / TP / INF JUMP BUTTONS =================--
+
 local espBtn = Instance.new("TextButton")
 espBtn.Size = UDim2.new(0, 170, 0, 30)
-espBtn.Position = UDim2.new(0, 10, 0, 0)
+espBtn.Position = UDim2.new(0, 200, 0, 80)
 espBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 espBtn.BorderSizePixel = 0
 espBtn.Text = "ESP: OFF"
@@ -322,12 +303,12 @@ espBtn.Font = Enum.Font.Gotham
 espBtn.TextSize = 16
 espBtn.TextTransparency = 1
 espBtn.AutoButtonColor = false
-espBtn.Parent = mainPage
+espBtn.Parent = frame
 Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 8)
 
 local tpBtn = Instance.new("TextButton")
 tpBtn.Size = UDim2.new(0, 170, 0, 30)
-tpBtn.Position = UDim2.new(0, 10, 0, 40)
+tpBtn.Position = UDim2.new(0, 200, 0, 120)
 tpBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 tpBtn.BorderSizePixel = 0
 tpBtn.Text = "TP к ближайшему"
@@ -336,12 +317,12 @@ tpBtn.Font = Enum.Font.Gotham
 tpBtn.TextSize = 16
 tpBtn.TextTransparency = 1
 tpBtn.AutoButtonColor = false
-tpBtn.Parent = mainPage
+tpBtn.Parent = frame
 Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 8)
 
 local infBtn = Instance.new("TextButton")
 infBtn.Size = UDim2.new(0, 170, 0, 30)
-infBtn.Position = UDim2.new(0, 10, 0, 80)
+infBtn.Position = UDim2.new(0, 200, 0, 160)
 infBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 infBtn.BorderSizePixel = 0
 infBtn.Text = "Infinite Jump: OFF"
@@ -350,182 +331,151 @@ infBtn.Font = Enum.Font.Gotham
 infBtn.TextSize = 16
 infBtn.TextTransparency = 1
 infBtn.AutoButtonColor = false
-infBtn.Parent = mainPage
+infBtn.Parent = frame
 Instance.new("UICorner", infBtn).CornerRadius = UDim.new(0, 8)
 
---================= PLAYERS TAB =================--
+--================= Infinite Yield + Dex кнопки =================--
 
-local playersPage = Instance.new("Frame")
-playersPage.Size = UDim2.new(1, -20, 1, -80)
-playersPage.Position = UDim2.new(0, 10, 0, 70)
-playersPage.BackgroundTransparency = 1
-playersPage.Visible = false
-playersPage.Parent = frame
+local iyBtn = Instance.new("TextButton")
+iyBtn.Size = UDim2.new(0, 170, 0, 30)
+iyBtn.Position = UDim2.new(0, 200, 0, 200)
+iyBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+iyBtn.BorderSizePixel = 0
+iyBtn.Text = "Open Infinite Yield"
+iyBtn.TextColor3 = Color3.fromRGB(230,230,240)
+iyBtn.Font = Enum.Font.Gotham
+iyBtn.TextSize = 16
+iyBtn.TextTransparency = 1
+iyBtn.AutoButtonColor = false
+iyBtn.Parent = frame
+Instance.new("UICorner", iyBtn).CornerRadius = UDim.new(0, 8)
 
-local playersLabel = Instance.new("TextLabel")
-playersLabel.Size = UDim2.new(1, 0, 0, 20)
-playersLabel.Position = UDim2.new(0, 0, 0, 0)
-playersLabel.BackgroundTransparency = 1
-playersLabel.Text = "Players (click to TP)"
-playersLabel.TextColor3 = Color3.fromRGB(230,230,240)
-playersLabel.Font = Enum.Font.Gotham
-playersLabel.TextSize = 14
-playersLabel.TextTransparency = 1
-playersLabel.Parent = playersPage
+local dexBtn = Instance.new("TextButton")
+dexBtn.Size = UDim2.new(0, 170, 0, 30)
+dexBtn.Position = UDim2.new(0, 200, 0, 240)
+dexBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+dexBtn.BorderSizePixel = 0
+dexBtn.Text = "Open Dex Explorer"
+dexBtn.TextColor3 = Color3.fromRGB(230,230,240)
+dexBtn.Font = Enum.Font.Gotham
+dexBtn.TextSize = 16
+dexBtn.TextTransparency = 1
+dexBtn.AutoButtonColor = false
+dexBtn.Parent = frame
+Instance.new("UICorner", dexBtn).CornerRadius = UDim.new(0, 8)
 
-local playersScroll = Instance.new("ScrollingFrame")
-playersScroll.Size = UDim2.new(1, -10, 1, -30)
-playersScroll.Position = UDim2.new(0, 5, 0, 25)
-playersScroll.BackgroundTransparency = 1
-playersScroll.BorderSizePixel = 0
-playersScroll.CanvasSize = UDim2.new(0,0,0,0)
-playersScroll.ScrollBarThickness = 4
-playersScroll.Parent = playersPage
+--================= ReplicatedStorage Explorer =================--
 
-local playersLayout = Instance.new("UIListLayout", playersScroll)
-playersLayout.FillDirection = Enum.FillDirection.Vertical
-playersLayout.SortOrder = Enum.SortOrder.LayoutOrder
-playersLayout.Padding = UDim.new(0, 4)
+local rsFrame = Instance.new("Frame")
+rsFrame.Size = UDim2.new(0, 260, 0, 200)
+rsFrame.Position = UDim2.new(0, 10, 0, 140)
+rsFrame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+rsFrame.BorderSizePixel = 0
+rsFrame.Visible = false
+rsFrame.Parent = frame
+Instance.new("UICorner", rsFrame).CornerRadius = UDim.new(0, 8)
 
-local function rebuildPlayersList()
-    playersScroll:ClearAllChildren()
-    playersLayout.Parent = playersScroll
+local rsTitle = Instance.new("TextLabel")
+rsTitle.Size = UDim2.new(1, 0, 0, 20)
+rsTitle.Position = UDim2.new(0, 0, 0, 0)
+rsTitle.BackgroundTransparency = 1
+rsTitle.Text = "ReplicatedStorage"
+rsTitle.TextColor3 = Color3.fromRGB(230,230,240)
+rsTitle.Font = Enum.Font.GothamBold
+rsTitle.TextSize = 14
+rsTitle.Parent = rsFrame
 
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= lp then
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, -4, 0, 24)
-            btn.BackgroundColor3 = Color3.fromRGB(30,30,45)
-            btn.BorderSizePixel = 0
-            btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.Text = plr.Name
-            btn.TextColor3 = Color3.fromRGB(230,230,240)
-            btn.Font = Enum.Font.Gotham
-            btn.TextSize = 14
-            btn.TextTransparency = 1
-            btn.AutoButtonColor = false
-            btn.Parent = playersScroll
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+local rsScroll = Instance.new("ScrollingFrame")
+rsScroll.Size = UDim2.new(1, -10, 1, -30)
+rsScroll.Position = UDim2.new(0, 5, 0, 25)
+rsScroll.BackgroundTransparency = 1
+rsScroll.BorderSizePixel = 0
+rsScroll.CanvasSize = UDim2.new(0,0,0,0)
+rsScroll.ScrollBarThickness = 4
+rsScroll.Parent = rsFrame
 
-            btn.MouseButton1Click:Connect(function()
-                local hrp = getHRP()
-                if hrp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    hrp.CFrame = plr.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
-                end
-            end)
+local rsLayout = Instance.new("UIListLayout", rsScroll)
+rsLayout.FillDirection = Enum.FillDirection.Vertical
+rsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rsLayout.Padding = UDim.new(0, 2)
+
+local function makeEntry(obj, indent)
+    indent = indent or 0
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -4, 0, 18)
+    btn.BackgroundColor3 = Color3.fromRGB(25,25,35)
+    btn.BorderSizePixel = 0
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(220,220,230)
+    btn.Parent = rsScroll
+
+    local prefix = string.rep("  ", indent)
+    btn.Text = prefix .. obj.Name .. " [" .. obj.ClassName .. "]"
+
+    local expanded = false
+    local childrenButtons = {}
+
+    local function toggle()
+        expanded = not expanded
+        if expanded then
+            for _, child in ipairs(obj:GetChildren()) do
+                local childBtn = makeEntry(child, indent + 1)
+                table.insert(childrenButtons, childBtn)
+            end
+        else
+            for _, b in ipairs(childrenButtons) do
+                b:Destroy()
+            end
+            childrenButtons = {}
         end
+        rsScroll.CanvasSize = UDim2.new(0,0,0,rsLayout.AbsoluteContentSize.Y)
     end
 
-    playersScroll.CanvasSize = UDim2.new(0,0,0,playersLayout.AbsoluteContentSize.Y)
+    btn.MouseButton1Click:Connect(toggle)
+
+    return btn
 end
 
-Players.PlayerAdded:Connect(rebuildPlayersList)
-Players.PlayerRemoving:Connect(rebuildPlayersList)
+local function rebuildRS()
+    rsScroll:ClearAllChildren()
+    rsLayout.Parent = rsScroll
+    for _, obj in ipairs(ReplicatedStorage:GetChildren()) do
+        makeEntry(obj, 0)
+    end
+    rsScroll.CanvasSize = UDim2.new(0,0,0,rsLayout.AbsoluteContentSize.Y)
+end
 
---================= INFO TAB =================--
+local rsVisible = false
 
-local infoPage = Instance.new("Frame")
-infoPage.Size = UDim2.new(1, -20, 1, -80)
-infoPage.Position = UDim2.new(0, 10, 0, 70)
-infoPage.BackgroundTransparency = 1
-infoPage.Visible = false
-infoPage.Parent = frame
+local rsBtn = Instance.new("TextButton")
+rsBtn.Size = UDim2.new(0, 170, 0, 30)
+rsBtn.Position = UDim2.new(0, 10, 0, 160)
+rsBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+rsBtn.BorderSizePixel = 0
+rsBtn.Text = "ReplicatedStorage Explorer"
+rsBtn.TextColor3 = Color3.fromRGB(230,230,240)
+rsBtn.Font = Enum.Font.Gotham
+rsBtn.TextSize = 14
+rsBtn.TextTransparency = 1
+rsBtn.AutoButtonColor = false
+rsBtn.Parent = frame
+Instance.new("UICorner", rsBtn).CornerRadius = UDim.new(0, 8)
 
-local infoTitle = Instance.new("TextLabel")
-infoTitle.Size = UDim2.new(1, 0, 0, 20)
-infoTitle.Position = UDim2.new(0, 0, 0, 0)
-infoTitle.BackgroundTransparency = 1
-infoTitle.Text = "Info"
-infoTitle.TextColor3 = Color3.fromRGB(230,230,240)
-infoTitle.Font = Enum.Font.GothamBold
-infoTitle.TextSize = 14
-infoTitle.TextTransparency = 1
-infoTitle.Parent = infoPage
-
-local posLabel = Instance.new("TextLabel")
-posLabel.Size = UDim2.new(1, 0, 0, 20)
-posLabel.Position = UDim2.new(0, 0, 0, 30)
-posLabel.BackgroundTransparency = 1
-posLabel.TextColor3 = Color3.fromRGB(200,200,210)
-posLabel.Font = Enum.Font.Code
-posLabel.TextSize = 14
-posLabel.TextXAlignment = Enum.TextXAlignment.Left
-posLabel.TextTransparency = 1
-posLabel.Parent = infoPage
-
-local speedInfoLabel = Instance.new("TextLabel")
-speedInfoLabel.Size = UDim2.new(1, 0, 0, 20)
-speedInfoLabel.Position = UDim2.new(0, 0, 0, 55)
-speedInfoLabel.BackgroundTransparency = 1
-speedInfoLabel.TextColor3 = Color3.fromRGB(200,200,210)
-speedInfoLabel.Font = Enum.Font.Code
-speedInfoLabel.TextSize = 14
-speedInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedInfoLabel.TextTransparency = 1
-speedInfoLabel.Parent = infoPage
-
-local jpLabel = Instance.new("TextLabel")
-jpLabel.Size = UDim2.new(1, 0, 0, 20)
-jpLabel.Position = UDim2.new(0, 0, 0, 80)
-jpLabel.BackgroundTransparency = 1
-jpLabel.TextColor3 = Color3.fromRGB(200,200,210)
-jpLabel.Font = Enum.Font.Code
-jpLabel.TextSize = 14
-jpLabel.TextXAlignment = Enum.TextXAlignment.Left
-jpLabel.TextTransparency = 1
-jpLabel.Parent = infoPage
-
-task.spawn(function()
-    while task.wait(0.25) do
-        if not gui.Enabled then break end
-        local hrp = getHRP()
-        local hum = getHumanoid()
-        if hrp then
-            local p = hrp.Position
-            posLabel.Text = string.format("Pos:  X=%.1f  Y=%.1f  Z=%.1f", p.X, p.Y, p.Z)
-        else
-            posLabel.Text = "Pos: N/A"
-        end
-        if hum then
-            speedInfoLabel.Text = "WalkSpeed: " .. tostring(hum.WalkSpeed)
-            jpLabel.Text = "JumpPower: " .. tostring(hum.JumpPower or 0)
-        else
-            speedInfoLabel.Text = "WalkSpeed: N/A"
-            jpLabel.Text = "JumpPower: N/A"
-        end
+rsBtn.MouseButton1Click:Connect(function()
+    rsVisible = not rsVisible
+    rsFrame.Visible = rsVisible
+    if rsVisible then
+        rebuildRS()
     end
 end)
-
---================= TABS LOGIC =================--
-
-local function setActiveTab(name)
-    mainPage.Visible = (name == "Main")
-    playersPage.Visible = (name == "Players")
-    infoPage.Visible = (name == "Info")
-
-    mainTabBtn.BackgroundColor3 = name == "Main" and Color3.fromRGB(40,40,60) or Color3.fromRGB(30,30,45)
-    playersTabBtn.BackgroundColor3 = name == "Players" and Color3.fromRGB(40,40,60) or Color3.fromRGB(30,30,45)
-    infoTabBtn.BackgroundColor3 = name == "Info" and Color3.fromRGB(40,40,60) or Color3.fromRGB(30,30,45)
-end
-
-mainTabBtn.MouseButton1Click:Connect(function()
-    setActiveTab("Main")
-end)
-
-playersTabBtn.MouseButton1Click:Connect(function()
-    setActiveTab("Players")
-    rebuildPlayersList()
-end)
-
-infoTabBtn.MouseButton1Click:Connect(function()
-    setActiveTab("Info")
-end)
-
-setActiveTab("Main")
 
 --================= ANIMATION =================--
 
 local isVisible = false
+local isFullScreen = false
 local tweenTime = 0.35
 local easing = Enum.EasingStyle.Quad
 local direction = Enum.EasingDirection.Out
@@ -533,15 +483,14 @@ local direction = Enum.EasingDirection.Out
 local function fadeIn()
     frame.Visible = true
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Position = UDim2.new(0.5, -210, 0.5, -130),
+        Position = UDim2.new(0.5, -190, 0.5, -140),
         BackgroundTransparency = 0
     }):Play()
 
     local elems = {
-        title, closeBtn,
-        mainTabBtn, playersTabBtn, infoTabBtn,
+        title, fullBtn, normalBtn, hideBtn, closeBtn,
         speedLabel, espBtn, tpBtn, infBtn,
-        playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
+        iyBtn, dexBtn, rsBtn
     }
 
     for _, ui in ipairs(elems) do
@@ -551,15 +500,14 @@ end
 
 local function fadeOut(callback)
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Position = UDim2.new(0.5, -210, 1, 10),
+        Position = UDim2.new(0.5, -190, 1, 10),
         BackgroundTransparency = 1
     }):Play()
 
     local elems = {
-        title, closeBtn,
-        mainTabBtn, playersTabBtn, infoTabBtn,
+        title, fullBtn, normalBtn, hideBtn, closeBtn,
         speedLabel, espBtn, tpBtn, infBtn,
-        playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
+        iyBtn, dexBtn, rsBtn
     }
 
     for _, ui in ipairs(elems) do
@@ -572,7 +520,38 @@ local function fadeOut(callback)
     end)
 end
 
+local function setNormal()
+    isFullScreen = false
+    TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
+        Size = UDim2.new(0, 380, 0, 280),
+        Position = UDim2.new(0.5, -190, 0.5, -140)
+    }):Play()
+end
+
+local function setFull()
+    isFullScreen = true
+    TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+end
+
 --================= BUTTON CALLBACKS =================--
+
+fullBtn.MouseButton1Click:Connect(function()
+    setFull()
+end)
+
+normalBtn.MouseButton1Click:Connect(function()
+    setNormal()
+end)
+
+hideBtn.MouseButton1Click:Connect(function()
+    if isVisible then
+        isVisible = false
+        fadeOut()
+    end
+end)
 
 closeBtn.MouseButton1Click:Connect(function()
     if isVisible then
@@ -599,6 +578,22 @@ infBtn.MouseButton1Click:Connect(function()
     toggleInfJump()
     infBtn.Text = infJumpEnabled and "Infinite Jump: ON" or "Infinite Jump: OFF"
     infBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(80, 40, 80) or Color3.fromRGB(35, 35, 50)
+end)
+
+iyBtn.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end)
+
+dexBtn.MouseButton1Click:Connect(function()
+    if not getgenv or not getgenv().IY_LOADED then
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        task.wait(2)
+    end
+    if getgenv and getgenv().IY and getgenv().IY.ExecuteCommand then
+        getgenv().IY.ExecuteCommand("dex")
+    else
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+    end
 end)
 
 --================= KEYBIND (K) =================--
