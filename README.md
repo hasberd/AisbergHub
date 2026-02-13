@@ -1,4 +1,4 @@
---=== AisbergHub UI (tabs справа + AntiAFK) ===--
+--=== AisbergHub UI (AntiAFK отдельной вкладкой) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -113,10 +113,10 @@ local function createTabButton(name, order)
     return btn
 end
 
-local mainTabBtn   = createTabButton("Main",   1)
-local gameTabBtn   = createTabButton("Game",   2)
-local visualTabBtn = createTabButton("Visual", 3)
-local miscTabBtn   = createTabButton("Misc",   4)
+local mainTabBtn   = createTabButton("Main",    1)
+local gameTabBtn   = createTabButton("Game",    2)
+local visualTabBtn = createTabButton("Visual",  3)
+local antiTabBtn   = createTabButton("AntiAFK", 4)
 
 --================= ОБЛАСТЬ КОНТЕНТА СЛЕВА =================--
 
@@ -163,17 +163,13 @@ local visualPlaceholder = mainPlaceholder:Clone()
 visualPlaceholder.Text = "Visual tab: ESP, визуальные эффекты."
 visualPlaceholder.Parent = visualPage
 
-local miscPage = Instance.new("Frame")
-miscPage.Size = UDim2.new(1, 0, 1, 0)
-miscPage.BackgroundTransparency = 1
-miscPage.Visible = false
-miscPage.Parent = pagesFrame
+local antiPage = Instance.new("Frame")
+antiPage.Size = UDim2.new(1, 0, 1, 0)
+antiPage.BackgroundTransparency = 1
+antiPage.Visible = false
+antiPage.Parent = pagesFrame
 
-local miscPlaceholder = mainPlaceholder:Clone()
-miscPlaceholder.Text = "Misc tab: прочие утилиты."
-miscPlaceholder.Parent = miscPage
-
---================= AntiAFK блок (в Game вкладке) =================--
+--================= AntiAFK блок (в AntiAFK вкладке) =================--
 
 local antiTitle = Instance.new("TextLabel")
 antiTitle.Size = UDim2.new(1, 0, 0, 20)
@@ -185,7 +181,7 @@ antiTitle.Font = Enum.Font.GothamBold
 antiTitle.TextSize = 16
 antiTitle.TextTransparency = 1
 antiTitle.TextXAlignment = Enum.TextXAlignment.Left
-antiTitle.Parent = gamePage
+antiTitle.Parent = antiPage
 
 local antiStatus = Instance.new("TextLabel")
 antiStatus.Size = UDim2.new(1, 0, 0, 18)
@@ -197,7 +193,7 @@ antiStatus.Font = Enum.Font.Gotham
 antiStatus.TextSize = 14
 antiStatus.TextTransparency = 1
 antiStatus.TextXAlignment = Enum.TextXAlignment.Left
-antiStatus.Parent = gamePage
+antiStatus.Parent = antiPage
 
 local antiDesc = Instance.new("TextLabel")
 antiDesc.Size = UDim2.new(1, 0, 0, 32)
@@ -211,7 +207,7 @@ antiDesc.TextSize = 13
 antiDesc.TextTransparency = 1
 antiDesc.TextXAlignment = Enum.TextXAlignment.Left
 antiDesc.TextYAlignment = Enum.TextYAlignment.Top
-antiDesc.Parent = gamePage
+antiDesc.Parent = antiPage
 
 local antiBtn = Instance.new("TextButton")
 antiBtn.Size = UDim2.new(0, 140, 0, 28)
@@ -224,7 +220,7 @@ antiBtn.Font = Enum.Font.Gotham
 antiBtn.TextSize = 14
 antiBtn.TextTransparency = 1
 antiBtn.AutoButtonColor = false
-antiBtn.Parent = gamePage
+antiBtn.Parent = antiPage
 Instance.new("UICorner", antiBtn).CornerRadius = UDim.new(0, 6)
 
 local antiAFKEnabled = false
@@ -260,20 +256,20 @@ local function setActiveTab(name)
     mainPage.Visible   = (name == "Main")
     gamePage.Visible   = (name == "Game")
     visualPage.Visible = (name == "Visual")
-    miscPage.Visible   = (name == "Misc")
+    antiPage.Visible   = (name == "AntiAFK")
 
-    mainTabBtn.BackgroundColor3   = name == "Main"   and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
-    gameTabBtn.BackgroundColor3   = name == "Game"   and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
-    visualTabBtn.BackgroundColor3 = name == "Visual" and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
-    miscTabBtn.BackgroundColor3   = name == "Misc"   and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    mainTabBtn.BackgroundColor3   = name == "Main"    and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    gameTabBtn.BackgroundColor3   = name == "Game"    and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    visualTabBtn.BackgroundColor3 = name == "Visual"  and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    antiTabBtn.BackgroundColor3   = name == "AntiAFK" and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
 end
 
 mainTabBtn.MouseButton1Click:Connect(function() setActiveTab("Main") end)
 gameTabBtn.MouseButton1Click:Connect(function() setActiveTab("Game") end)
 visualTabBtn.MouseButton1Click:Connect(function() setActiveTab("Visual") end)
-miscTabBtn.MouseButton1Click:Connect(function() setActiveTab("Misc") end)
+antiTabBtn.MouseButton1Click:Connect(function() setActiveTab("AntiAFK") end)
 
-setActiveTab("Game") -- можно вернуть на "Main" позже
+setActiveTab("Main")
 
 --================= АНИМАЦИЯ (меню + кнопки синхронно) =================--
 
@@ -284,8 +280,8 @@ local direction = Enum.EasingDirection.Out
 
 local guiElements = {
     title, subtitle, closeBtn,
-    mainTabBtn, gameTabBtn, visualTabBtn, miscTabBtn,
-    mainPlaceholder, gamePlaceholder, visualPlaceholder, miscPlaceholder,
+    mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn,
+    mainPlaceholder, gamePlaceholder, visualPlaceholder,
     antiTitle, antiStatus, antiDesc, antiBtn
 }
 
@@ -359,4 +355,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("AisbergHub UI загружен. Нажми K для меню (AntiAFK во вкладке Game).")
+print("AisbergHub UI загружен. Нажми K для меню (AntiAFK во вкладке AntiAFK).")
