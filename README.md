@@ -1,4 +1,4 @@
---=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Visual Collect BlockEssence) ===--
+--=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Player ESP + Collect Block Essence) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local lp = Players.LocalPlayer
 
@@ -75,59 +76,70 @@ local function togglePlayerESP()
     end
 end
 
---================= COLLECT BLOCK ESSENCE =================--
+--================= Collect Block Essence =================--
 
-local collectingBlockEssence = false
+local collectingEssence = false
+local essenceMeshId = "rbxassetid://202604402" -- seedblock для Normal Block Essence[web:282]
 
 local function getHRP()
     local char = lp.Character or lp.CharacterAdded:Wait()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
-local function getNearestBlockEssence()
-    local hrp = getHRP()
-    if not hrp then return nil end
-
-    local nearest, dist = nil, math.huge
+local function findEssenceBlocks()
+    local list = {}
     for _, d in ipairs(Workspace:GetDescendants()) do
         if d:IsA("BasePart") and d.Name == "BlockEssence" then
-            local mag = (d.Position - hrp.Position).Magnitude
-            if mag < dist then
-                dist = mag
-                nearest = d
+            local meshId = nil
+            if d:IsA("MeshPart") then
+                meshId = d.MeshId
+            else
+                local mesh = d:FindFirstChildOfClass("SpecialMesh")
+                if mesh then meshId = mesh.MeshId end
+            end
+            if meshId and meshId == essenceMeshId then
+                table.insert(list, d)
             end
         end
     end
-    return nearest, dist
+    return list
 end
 
-local function startCollectBlockEssence()
-    if collectingBlockEssence then return end
-    collectingBlockEssence = true
+local function collectBlockEssence()
+    if collectingEssence then return end
+    collectingEssence = true
 
-    task.spawn(function()
-        while collectingBlockEssence do
-            local hrp = getHRP()
-            if not hrp then break end
+    local hrp = getHRP()
+    if not hrp then
+        collectingEssence = false
+        return
+    end
 
-            local target = getNearestBlockEssence()
-            if target then
-                -- телепорт чуть выше/рядом, чтобы не застрять
-                hrp.CFrame = target.CFrame + Vector3.new(0, 3, 0)  -- можно сделать смещение в сторону, если надо
-                -- если игра требует зажатия E, сюда вписываешь keyhold / keypress из своего executor
-                -- пример (ЗАГЛУШКА, адаптируй под свой API):
-                -- if keyhold then
-                --     keyhold(Enum.KeyCode.E, 0.5) -- держать 0.5 сек
-                -- end
+    local blocks = findEssenceBlocks()
+    for _, part in ipairs(blocks) do
+        if not collectingEssence then break end
+        if part and part.Parent then
+            -- телепорт чуть рядом/над блоком
+            hrp.CFrame = part.CFrame * CFrame.new(0, 3, 0)
+            task.wait(0.2)
+
+            -- ищем ProximityPrompt (если игра использует E через Prompt)[web:278][web:283]
+            local prompt = part:FindFirstChildOfClass("ProximityPrompt") or part:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt then
+                -- имитация удержания E: несколько попыток Trigger
+                for i = 1, 5 do
+                    if not collectingEssence then break end
+                    fireproximityprompt(prompt, 1) -- большинство эксплойтов поддерживают эту функцию
+                    task.wait(0.25)
+                end
+            else
+                -- если нет Prompt — просто постоять рядом (вдруг автосбор по касанию)
+                task.wait(0.5)
             end
-
-            task.wait(0.5) -- задержка между поиском/ТП, подстрой под игру
         end
-    end)
-end
+    end
 
-local function stopCollectBlockEssence()
-    collectingBlockEssence = false
+    collectingEssence = false
 end
 
 --================= GUI BASE =================--
@@ -312,19 +324,19 @@ playerESPBtn.AutoButtonColor = false
 playerESPBtn.Parent = visualPage
 Instance.new("UICorner", playerESPBtn).CornerRadius = UDim.new(0, 6)
 
-local collectBlockBtn = Instance.new("TextButton")
-collectBlockBtn.Size = UDim2.new(0, 200, 0, 28)
-collectBlockBtn.Position = UDim2.new(0, 0, 0, 70)
-collectBlockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-collectBlockBtn.BorderSizePixel = 0
-collectBlockBtn.Text = "Collect Block Essence: OFF"
-collectBlockBtn.TextColor3 = Color3.fromRGB(230,230,240)
-collectBlockBtn.Font = Enum.Font.Gotham
-collectBlockBtn.TextSize = 14
-collectBlockBtn.TextTransparency = 1
-collectBlockBtn.AutoButtonColor = false
-collectBlockBtn.Parent = visualPage
-Instance.new("UICorner", collectBlockBtn).CornerRadius = UDim.new(0, 6)
+local collectEssenceBtn = Instance.new("TextButton")
+collectEssenceBtn.Size = UDim2.new(0, 200, 0, 28)
+collectEssenceBtn.Position = UDim2.new(0, 0, 0, 70)
+collectEssenceBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+collectEssenceBtn.BorderSizePixel = 0
+collectEssenceBtn.Text = "Collect Block Essence"
+collectEssenceBtn.TextColor3 = Color3.fromRGB(230,230,240)
+collectEssenceBtn.Font = Enum.Font.Gotham
+collectEssenceBtn.TextSize = 14
+collectEssenceBtn.TextTransparency = 1
+collectEssenceBtn.AutoButtonColor = false
+collectEssenceBtn.Parent = visualPage
+Instance.new("UICorner", collectEssenceBtn).CornerRadius = UDim.new(0, 6)
 
 --================= AntiAFK блок =================--
 
@@ -439,16 +451,14 @@ playerESPBtn.MouseButton1Click:Connect(function()
     playerESPBtn.BackgroundColor3 = playerESPEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
 end)
 
-collectBlockBtn.MouseButton1Click:Connect(function()
-    collectingBlockEssence = not collectingBlockEssence
-    if collectingBlockEssence then
-        collectBlockBtn.Text = "Collect Block Essence: ON"
-        collectBlockBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        startCollectBlockEssence()
+collectEssenceBtn.MouseButton1Click:Connect(function()
+    if not collectingEssence then
+        collectEssenceBtn.Text = "Collecting..."
+        collectBlockEssence()
+        collectEssenceBtn.Text = "Collect Block Essence"
     else
-        collectBlockBtn.Text = "Collect Block Essence: OFF"
-        collectBlockBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
-        stopCollectBlockEssence()
+        collectingEssence = false
+        collectEssenceBtn.Text = "Collect Block Essence"
     end
 end)
 
@@ -464,7 +474,7 @@ local guiElements = {
     mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn, settingsTabBtn,
     mainPlaceholder, gamePlaceholder, visualPlaceholder, settingsPlaceholder,
     antiTitle, antiStatus, antiDesc, antiBtn,
-    playerESPBtn, collectBlockBtn
+    playerESPBtn, collectEssenceBtn
 }
 
 local function setTextTransparency(value)
