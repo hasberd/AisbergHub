@@ -1,408 +1,342 @@
---=== AisbergHub Neo v4.0 (MODERN DESIGN) ===--
+--=== AisbergHub Modern GUI (Complete K Toggle + Smooth Animations) ===--
 if getgenv and getgenv().AisbergHubLoaded then return end
 if getgenv then getgenv().AisbergHubLoaded = true end
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
--- Modern color palette
+-- Colors
 local Colors = {
-    Primary = Color3.fromRGB(15, 15, 25),
-    Secondary = Color3.fromRGB(25, 25, 35),
-    Accent = Color3.fromRGB(100, 150, 255),
-    Success = Color3.fromRGB(50, 200, 100),
-    Warning = Color3.fromRGB(255, 180, 80),
-    Text = Color3.fromRGB(240, 240, 255),
-    TextDim = Color3.fromRGB(160, 160, 180),
-    Glass = Color3.fromRGB(20, 20, 30)
+    BG = Color3.fromRGB(15, 15, 20),
+    Shadow = Color3.new(0,0,0),
+    TextPrimary = Color3.fromRGB(235, 235, 245),
+    TextSecondary = Color3.fromRGB(160, 160, 180),
+    Button = Color3.fromRGB(40, 40, 55),
+    Active = Color3.fromRGB(50, 180, 100)
 }
 
 -- State
-local isMinimized = false
-local isClosed = false
-local CurrentTab = 1
+local isVisible = false
+local collectingEssence = false
+local collectingChest = false
 
--- Enhanced fade function
-local function fadeAllChildren(parent, targetTransparency, duration)
-    local tweenInfo = TweenInfo.new(duration or 0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-    for _, child in pairs(parent:GetDescendants()) do
-        if child:IsA("GuiObject") then
-            local goals = {BackgroundTransparency = targetTransparency}
-            if child:IsA("TextLabel") or child:IsA("TextButton") then
-                goals.TextTransparency = targetTransparency
-            elseif child:IsA("ImageLabel") then
-                goals.ImageTransparency = targetTransparency
-            end
-            TweenService:Create(child, tweenInfo, goals):Play()
-        end
-    end
-end
+--================= GUI BASE =================--
+local gui = Instance.new("ScreenGui")
+gui.Name = "AisbergHubUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = lp:WaitForChild("PlayerGui")
 
--- Create main ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AisbergHub_Neo"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = lp:WaitForChild("PlayerGui")
+local frame = Instance.new("Frame")
+frame.Name = "MainFrame"
+frame.BackgroundColor3 = Colors.BG
+frame.BorderSizePixel = 0
+frame.Size = UDim2.new(0, 420, 0, 320)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+frame.Visible = false
+frame.BackgroundTransparency = 1
+frame.Parent = gui
 
--- Main container with glassmorphism
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 720, 0, 480)
-MainFrame.Position = UDim2.new(0.5, -360, 0.5, -240)
-MainFrame.BackgroundColor3 = Colors.Glass
-MainFrame.BackgroundTransparency = 0.1
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0, 12)
 
--- Glass effect with UIGradient + UIStroke
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 20)
-UICorner.Parent = MainFrame
+-- Shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://5028857084"
+shadow.ImageColor3 = Colors.Shadow
+shadow.ImageTransparency = 1
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(24,24,276,276)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.ZIndex = 0
+shadow.Parent = frame
 
-local UIGradient = Instance.new("UIGradient")
-UIGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 35)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 20))
-}
-UIGradient.Rotation = 45
-UIGradient.Parent = MainFrame
+-- Header
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -60, 0, 26)
+title.Position = UDim2.new(0, 14, 0, 8)
+title.BackgroundTransparency = 1
+title.Text = "AisbergHub"
+title.TextColor3 = Colors.TextPrimary
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextTransparency = 1
+title.Parent = frame
 
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Colors.Accent
-UIStroke.Thickness = 2
-UIStroke.Transparency = 0.5
-UIStroke.Parent = MainFrame
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -60, 0, 18)
+subtitle.Position = UDim2.new(0, 14, 0, 32)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Tap Simulator Utility"
+subtitle.TextColor3 = Colors.TextSecondary
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 14
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextTransparency = 1
+subtitle.Parent = frame
 
--- Header Bar
-local HeaderFrame = Instance.new("Frame")
-HeaderFrame.Name = "Header"
-HeaderFrame.Size = UDim2.new(1, 0, 0, 60)
-HeaderFrame.BackgroundColor3 = Colors.Primary
-HeaderFrame.BackgroundTransparency = 0.05
-HeaderFrame.BorderSizePixel = 0
-HeaderFrame.Parent = MainFrame
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 28, 0, 28)
+closeBtn.Position = UDim2.new(1, -34, 0, 10)
+closeBtn.BackgroundColor3 = Colors.Button
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "✕"
+closeBtn.TextColor3 = Colors.TextPrimary
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 16
+closeBtn.TextTransparency = 1
+closeBtn.AutoButtonColor = false
+closeBtn.Parent = frame
 
-local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 20)
-HeaderCorner.Parent = HeaderFrame
-
-local HeaderGradient = Instance.new("UIGradient")
-HeaderGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Colors.Primary),
-    ColorSequenceKeypoint.new(1, Colors.Secondary)
-}
-HeaderGradient.Parent = HeaderFrame
-
--- Logo & Title
-local LogoLabel = Instance.new("TextLabel")
-LogoLabel.Size = UDim2.new(0, 200, 1, 0)
-LogoLabel.Position = UDim2.new(0, 25, 0, 0)
-LogoLabel.BackgroundTransparency = 1
-LogoLabel.Text = "AisbergHub"
-LogoLabel.TextColor3 = Colors.Accent
-LogoLabel.TextStrokeTransparency = 0.8
-LogoLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-LogoLabel.Font = Enum.Font.GothamBold
-LogoLabel.TextSize = 28
-LogoLabel.TextXAlignment = Enum.TextXAlignment.Left
-LogoLabel.Parent = HeaderFrame
+local closeCorner = Instance.new("UICorner", closeBtn)
+closeCorner.CornerRadius = UDim.new(0, 6)
 
 -- Status indicator
-local StatusFrame = Instance.new("Frame")
-StatusFrame.Size = UDim2.new(0, 80, 0, 25)
-StatusFrame.Position = UDim2.new(0, 240, 0.5, -12.5)
-StatusFrame.BackgroundColor3 = Colors.Success
-StatusFrame.BackgroundTransparency = 0.2
-StatusFrame.Parent = HeaderFrame
+local statusFrame = Instance.new("Frame")
+statusFrame.Size = UDim2.new(0, 60, 0, 20)
+statusFrame.Position = UDim2.new(1, -80, 0, 12)
+statusFrame.BackgroundColor3 = Colors.Active
+statusFrame.BackgroundTransparency = 1
+statusFrame.BorderSizePixel = 0
+statusFrame.Parent = frame
 
-local StatusCorner = Instance.new("UICorner")
-StatusCorner.CornerRadius = UDim.new(0, 12)
-StatusCorner.Parent = StatusFrame
+local statusCorner = Instance.new("UICorner", statusFrame)
+statusCorner.CornerRadius = UDim.new(0, 10)
 
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, 0, 1, 0)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "ONLINE"
-StatusLabel.TextColor3 = Colors.Text
-StatusLabel.Font = Enum.Font.GothamMedium
-StatusLabel.TextSize = 11
-StatusLabel.Parent = StatusFrame
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 1, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "ACTIVE"
+statusLabel.TextColor3 = Colors.TextPrimary
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.TextSize = 11
+statusLabel.TextTransparency = 1
+statusLabel.Parent = statusFrame
+
+-- Tabs container
+local tabsFrame = Instance.new("Frame")
+tabsFrame.Size = UDim2.new(1, -20, 0, 40)
+tabsFrame.Position = UDim2.new(0, 10, 0, 60)
+tabsFrame.BackgroundTransparency = 1
+tabsFrame.Parent = frame
+
+local tabsLayout = Instance.new("UIListLayout")
+tabsLayout.FillDirection = Enum.FillDirection.Horizontal
+tabsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+tabsLayout.Padding = UDim.new(0, 10)
+tabsLayout.Parent = tabsFrame
+
+local tabs = {"⚡ Tap Sim", "👁️ Visuals", "🛡️ Misc"}
+local tabButtons = {}
+local currentTab = 1
+
+for i, tabName in ipairs(tabs) do
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(0, 100, 1, 0)
+    tabBtn.BackgroundColor3 = Colors.Button
+    tabBtn.BorderSizePixel = 0
+    tabBtn.Text = tabName
+    tabBtn.TextColor3 = Colors.TextSecondary
+    tabBtn.Font = Enum.Font.GothamSemibold
+    tabBtn.TextSize = 14
+    tabBtn.AutoButtonColor = false
+    tabBtn.TextTransparency = 1
+    tabBtn.BackgroundTransparency = 1
+    tabBtn.Parent = tabsFrame
+    
+    local tabCorner = Instance.new("UICorner", tabBtn)
+    tabCorner.CornerRadius = UDim.new(0, 8)
+    
+    tabButtons[i] = tabBtn
+end
+
+-- Content area
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, -20, 1, -120)
+contentFrame.Position = UDim2.new(0, 10, 0, 105)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = frame
+
+-- Tab contents
+local tabContents = {}
+for i = 1, #tabs do
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 1, 0)
+    content.BackgroundTransparency = 1
+    content.Visible = i == 1
+    content.Parent = contentFrame
+    tabContents[i] = content
+end
+
+-- Tap Sim buttons (Tab 1)
+local essenceBtn = Instance.new("TextButton")
+essenceBtn.Size = UDim2.new(1, -20, 0, 50)
+essenceBtn.Position = UDim2.new(0, 10, 0, 10)
+essenceBtn.BackgroundColor3 = Colors.Button
+essenceBtn.BorderSizePixel = 0
+essenceBtn.Text = "💎 Collect Essence"
+essenceBtn.TextColor3 = Colors.TextPrimary
+essenceBtn.Font = Enum.Font.Gotham
+essenceBtn.TextSize = 15
+essenceBtn.TextTransparency = 1
+essenceBtn.AutoButtonColor = false
+essenceBtn.BackgroundTransparency = 1
+essenceBtn.Parent = tabContents[1]
+
+local essenceCorner = Instance.new("UICorner", essenceBtn)
+essenceCorner.CornerRadius = UDim.new(0, 10)
+
+local chestBtn = Instance.new("TextButton")
+chestBtn.Size = UDim2.new(1, -20, 0, 50)
+chestBtn.Position = UDim2.new(0, 10, 0, 70)
+chestBtn.BackgroundColor3 = Colors.Button
+chestBtn.BorderSizePixel = 0
+chestBtn.Text = "📦 Collect Chests"
+chestBtn.TextColor3 = Colors.TextPrimary
+chestBtn.Font = Enum.Font.Gotham
+chestBtn.TextSize = 15
+chestBtn.TextTransparency = 1
+chestBtn.AutoButtonColor = false
+chestBtn.BackgroundTransparency = 1
+chestBtn.Parent = tabContents[1]
+
+local chestCorner = Instance.new("UICorner", chestBtn)
+chestCorner.CornerRadius = UDim.new(0, 10)
+
+-- Footer
+local footer = Instance.new("TextLabel")
+footer.Size = UDim2.new(1, -20, 0, 20)
+footer.Position = UDim2.new(0, 10, 1, -30)
+footer.BackgroundTransparency = 1
+footer.Text = "User: " .. lp.Name .. " | Tap Simulator | v2.0"
+footer.TextColor3 = Colors.TextSecondary
+footer.Font = Enum.Font.Gotham
+footer.TextSize = 12
+footer.TextXAlignment = Enum.TextXAlignment.Center
+footer.TextTransparency = 1
+footer.Parent = frame
+
+--================= ANIMATIONS & LOGIC =================--
+local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local fadeInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function fadeAll(targetTransparency)
+    for _, obj in pairs(frame:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.BackgroundTransparency ~= nil then
+            local goals = {BackgroundTransparency = targetTransparency}
+            if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                goals.TextTransparency = targetTransparency
+            elseif obj:IsA("ImageLabel") then
+                goals.ImageTransparency = targetTransparency
+            end
+            TweenService:Create(obj, fadeInfo, goals):Play()
+        end
+    end
+end
+
+-- Tab switching
+for i, tabBtn in ipairs(tabButtons) do
+    tabBtn.MouseButton1Click:Connect(function()
+        currentTab = i
+        for j, btn in ipairs(tabButtons) do
+            TweenService:Create(btn, tweenInfo, {
+                BackgroundTransparency = j == i and 0.1 or 0.4,
+                TextColor3 = j == i and Colors.TextPrimary or Colors.TextSecondary,
+                BackgroundColor3 = j == i and Colors.Active or Colors.Button
+            }):Play()
+        end
+        
+        for j, content in ipairs(tabContents) do
+            content.Visible = j == i
+        end
+    end)
+end
+
+-- Toggle buttons
+essenceBtn.MouseButton1Click:Connect(function()
+    collectingEssence = not collectingEssence
+    TweenService:Create(essenceBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = collectingEssence and Colors.Active or Colors.Button,
+        BackgroundTransparency = 0.2
+    }):Play()
+    print("Essence collector:", collectingEssence)
+end)
+
+chestBtn.MouseButton1Click:Connect(function()
+    collectingChest = not collectingChest
+    TweenService:Create(chestBtn, TweenInfo.new(0.2), {
+        BackgroundColor3 = collectingChest and Colors.Active or Colors.Button,
+        BackgroundTransparency = 0.2
+    }):Play()
+    print("Chest collector:", collectingChest)
+end)
 
 -- Close button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 40)
-CloseBtn.Position = UDim2.new(1, -50, 0.5, -20)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-CloseBtn.BackgroundTransparency = 0.1
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Colors.Text
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 20
-CloseBtn.Parent = HeaderFrame
+closeBtn.MouseButton1Click:Connect(function()
+    isVisible = false
+    fadeAll(1)
+    TweenService:Create(frame, fadeInfo, {
+        Size = UDim2.new(0, 80, 0, 80),
+        Position = UDim2.new(1, -90, 1, -90)
+    }):Play()
+end)
 
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 12)
-CloseCorner.Parent = CloseBtn
-
--- Sidebar (Vertical tabs)
-local Sidebar = Instance.new("Frame")
-Sidebar.Name = "Sidebar"
-Sidebar.Size = UDim2.new(0, 200, 1, -80)
-Sidebar.Position = UDim2.new(0, 0, 0, 60)
-Sidebar.BackgroundTransparency = 1
-Sidebar.Parent = MainFrame
-
-local TabContainer = Instance.new("ScrollingFrame")
-TabContainer.Size = UDim2.new(1, -20, 1, -20)
-TabContainer.Position = UDim2.new(0, 10, 0, 10)
-TabContainer.BackgroundTransparency = 1
-TabContainer.ScrollBarThickness = 4
-TabContainer.ScrollBarImageColor3 = Colors.Accent
-TabContainer.Parent = Sidebar
-
-local TabLayout = Instance.new("UIListLayout")
-TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 8)
-TabLayout.Parent = TabContainer
-
--- Tab buttons data
-local TabData = {
-    {name = "🏠 Dashboard", layoutOrder = 1},
-    {name = "⚡ Tap Sim", layoutOrder = 2},
-    {name = "👁️ Visuals", layoutOrder = 3},
-    {name = "🎮 Universal", layoutOrder = 4},
-    {name = "🛡️ AntiAFK", layoutOrder = 5},
-    {name = "⚙️ Settings", layoutOrder = 6}
-}
-
-local TabButtons = {}
-for i, data in ipairs(TabData) do
-    local TabBtn = Instance.new("TextButton")
-    TabBtn.Name = "TabBtn" .. i
-    TabBtn.Size = UDim2.new(1, 0, 0, 50)
-    TabBtn.BackgroundColor3 = Colors.Secondary
-    TabBtn.BackgroundTransparency = 0.3
-    TabBtn.BorderSizePixel = 0
-    TabBtn.Text = data.name
-    TabBtn.TextColor3 = Colors.Text
-    TabBtn.Font = Enum.Font.GothamSemibold
-    TabBtn.TextSize = 15
-    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
-    TabBtn.LayoutOrder = data.layoutOrder
-    TabBtn.AutoButtonColor = false
-    TabBtn.Parent = TabContainer
-    
-    local TabCorner = Instance.new("UICorner")
-    TabCorner.CornerRadius = UDim.new(0, 12)
-    TabCorner.Parent = TabBtn
-    
-    local TabStroke = Instance.new("UIStroke")
-    TabStroke.Color = Colors.Accent
-    TabStroke.Thickness = 1.5
-    TabStroke.Transparency = i == 1 and 0 or 1
-    TabStroke.Parent = TabBtn
-    
-    TabButtons[i] = {button = TabBtn, stroke = TabStroke}
-end
-
--- Main content area
-local ContentArea = Instance.new("Frame")
-ContentArea.Name = "ContentArea"
-ContentArea.Size = UDim2.new(1, -220, 1, -80)
-ContentArea.Position = UDim2.new(0, 210, 0, 60)
-ContentArea.BackgroundColor3 = Colors.Glass
-ContentArea.BackgroundTransparency = 0.15
-ContentArea.BorderSizePixel = 0
-ContentArea.Parent = MainFrame
-
-local ContentCorner = Instance.new("UICorner")
-ContentCorner.CornerRadius = UDim.new(0, 16)
-ContentCorner.Parent = ContentArea
-
--- Tab content pages
-local TabPages = {}
-for i = 1, #TabData do
-    local Page = Instance.new("Frame")
-    Page.Name = "Page" .. i
-    Page.Size = UDim2.new(1, -30, 1, -30)
-    Page.Position = UDim2.new(0, 15, 0, 15)
-    Page.BackgroundTransparency = 1
-    Page.Visible = i == 1
-    Page.Parent = ContentArea
-    TabPages[i] = Page
-end
-
--- Tap Sim Page content (Page 2)
-local TapSimPage = TabPages[2]
-local CollectEssenceBtn = Instance.new("TextButton")
-CollectEssenceBtn.Size = UDim2.new(0, 280, 0, 60)
-CollectEssenceBtn.Position = UDim2.new(0.5, -140, 0, 40)
-CollectEssenceBtn.BackgroundColor3 = Colors.Secondary
-CollectEssenceBtn.BackgroundTransparency = 0.2
-CollectEssenceBtn.BorderSizePixel = 0
-CollectEssenceBtn.Text = "💎 Auto Collect Essence"
-CollectEssenceBtn.TextColor3 = Colors.Text
-CollectEssenceBtn.Font = Enum.Font.GothamBold
-CollectEssenceBtn.TextSize = 16
-CollectEssenceBtn.AutoButtonColor = false
-CollectEssenceBtn.Parent = TapSimPage
-
-local EssenceCorner = Instance.new("UICorner")
-EssenceCorner.CornerRadius = UDim.new(0, 14)
-EssenceCorner.Parent = CollectEssenceBtn
-
-local CollectChestBtn = Instance.new("TextButton")
-CollectChestBtn.Size = UDim2.new(0, 280, 0, 60)
-CollectChestBtn.Position = UDim2.new(0.5, -140, 0, 120)
-CollectChestBtn.BackgroundColor3 = Colors.Secondary
-CollectChestBtn.BackgroundTransparency = 0.2
-CollectChestBtn.BorderSizePixel = 0
-CollectChestBtn.Text = "📦 Auto Collect Chests"
-CollectChestBtn.TextColor3 = Colors.Text
-CollectChestBtn.Font = Enum.Font.GothamBold
-CollectChestBtn.TextSize = 16
-CollectChestBtn.AutoButtonColor = false
-CollectChestBtn.Parent = TapSimPage
-
-local ChestCorner = Instance.new("UICorner")
-ChestCorner.CornerRadius = UDim.new(0, 14)
-ChestCorner.Parent = CollectChestBtn
-
--- Dashboard welcome text
-local WelcomeLabel = Instance.new("TextLabel")
-WelcomeLabel.Size = UDim2.new(1, -40, 0, 80)
-WelcomeLabel.Position = UDim2.new(0, 20, 0, 20)
-WelcomeLabel.BackgroundTransparency = 1
-WelcomeLabel.Text = "Welcome to AisbergHub Neo\nModern exploit interface"
-WelcomeLabel.TextColor3 = Colors.Text
-WelcomeLabel.TextScaled = true
-WelcomeLabel.Font = Enum.Font.GothamBold
-WelcomeLabel.TextXAlignment = Enum.TextXAlignment.Left
-WelcomeLabel.Parent = TabPages[1]
-
--- Footer info
-local Footer = Instance.new("Frame")
-Footer.Size = UDim2.new(1, -20, 0, 35)
-Footer.Position = UDim2.new(0, 10, 1, -45)
-Footer.BackgroundColor3 = Colors.Primary
-Footer.BackgroundTransparency = 0.3
-Footer.BorderSizePixel = 0
-Footer.Parent = MainFrame
-
-local FooterCorner = Instance.new("UICorner")
-FooterCorner.CornerRadius = UDim.new(0, 12)
-FooterCorner.Parent = Footer
-
-local UserInfo = Instance.new("TextLabel")
-UserInfo.Size = UDim2.new(0.5, 0, 1, 0)
-UserInfo.BackgroundTransparency = 1
-UserInfo.Text = "User: " .. lp.Name
-UserInfo.TextColor3 = Colors.TextDim
-UserInfo.Font = Enum.Font.Gotham
-UserInfo.TextSize = 13
-UserInfo.TextXAlignment = Enum.TextXAlignment.Left
-UserInfo.Parent = Footer
-
-local VersionLabel = Instance.new("TextLabel")
-VersionLabel.Size = UDim2.new(0.5, 0, 1, 0)
-VersionLabel.Position = UDim2.new(0.5, 0, 0, 0)
-VersionLabel.BackgroundTransparency = 1
-VersionLabel.Text = "v4.0 Neo | by hasberd"
-VersionLabel.TextColor3 = Colors.TextDim
-VersionLabel.Font = Enum.Font.Gotham
-VersionLabel.TextSize = 13
-VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
-VersionLabel.Parent = Footer
-
--- Button hover effects
-local function addHoverEffect(btn)
-    btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {
-            BackgroundTransparency = 0.1,
-            Size = UDim2.new(1, 10, 1, 8)
-        }):Play()
-    end)
-    btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {
-            BackgroundTransparency = 0.2,
-            Size = UDim2.new(1, 0, 1, 0)
-        }):Play()
-    end)
-end
-
--- Apply hover to all buttons
-for _, tabData in pairs(TabButtons) do
-    addHoverEffect(tabData.button)
-end
-addHoverEffect(CollectEssenceBtn)
-addHoverEffect(CollectChestBtn)
-addHoverEffect(CloseBtn)
-
--- Tab switching logic
-for i, tabData in ipairs(TabButtons) do
-    tabData.button.MouseButton1Click:Connect(function()
-        CurrentTab = i
-        
-        -- Update tab highlights
-        for j, data in ipairs(TabButtons) do
-            TweenService:Create(data.stroke, TweenInfo.new(0.3), {
-                Transparency = j == i and 0 or 1
-            }):Play()
-            TweenService:Create(data.button, TweenInfo.new(0.3), {
-                BackgroundTransparency = j == i and 0 or 0.3
-            }):Play()
-        end
-        
-        -- Switch content pages
-        for j, page in ipairs(TabPages) do
-            page.Visible = j == i
-        end
-    end)
-end
-
--- Toggle functionality (RightCtrl)
+-- ✅ ПЛАВНЫЙ K TOGGLE (основная фича)
 UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe or isClosed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        if isMinimized then
-            fadeAllChildren(MainFrame, 0.15, 0.4)
-            TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {
-                Size = UDim2.new(0, 720, 0, 480),
-                Position = UDim2.new(0.5, -360, 0.5, -240)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.K then
+        isVisible = not isVisible
+        
+        if isVisible then
+            -- ПЛАВНОЕ ОТКРЫТИЕ
+            frame.Visible = true
+            frame.Size = UDim2.new(0, 0, 0, 0)
+            frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+            frame.BackgroundTransparency = 1
+            shadow.ImageTransparency = 1
+            
+            local openTween = TweenService:Create(frame, tweenInfo, {
+                Size = UDim2.new(0, 420, 0, 320),
+                BackgroundTransparency = 0.4
+            })
+            
+            TweenService:Create(shadow, TweenInfo.new(0.5), {
+                ImageTransparency = 0.6
             }):Play()
-            isMinimized = false
+            
+            openTween:Play()
+            openTween.Completed:Connect(function()
+                fadeAll(0.4)
+            end)
+            
         else
-            fadeAllChildren(MainFrame, 0.9, 0.3)
-            TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {
-                Size = UDim2.new(0, 100, 0, 100),
-                Position = UDim2.new(1, -120, 1, -120)
+            -- ПЛАВНОЕ ЗАКРЫТИЕ
+            fadeAll(1)
+            TweenService:Create(frame, fadeInfo, {
+                Size = UDim2.new(0, 80, 0, 80),
+                Position = UDim2.new(1, -90, 1, -90),
+                BackgroundTransparency = 1
             }):Play()
-            isMinimized = true
+            TweenService:Create(shadow, fadeInfo, {ImageTransparency = 1}):Play()
         end
     end
 end)
 
--- Close functionality
-CloseBtn.MouseButton1Click:Connect(function()
-    fadeAllChildren(MainFrame, 1, 0.4)
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-        Size = UDim2.new(0, 0, 0, 0)
-    }):Play():Wait()
-    ScreenGui:Destroy()
-    isClosed = true
-end)
-
--- Draggable header
+-- Draggable
 local dragging, dragInput, dragStart, startPos
-HeaderFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and isVisible then
         dragging = true
         dragStart = input.Position
-        startPos = MainFrame.Position
+        startPos = frame.Position
+        
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -411,8 +345,8 @@ HeaderFrame.InputBegan:Connect(function(input)
     end
 end)
 
-HeaderFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
         dragInput = input
     end
 end)
@@ -420,11 +354,9 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if dragging and input == dragInput then
         local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
+                                   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
--- Initial fade in
-fadeAllChildren(MainFrame, 0.15, 0.6)
-
-print("AisbergHub Neo v4.0 loaded! [RightCtrl] = toggle, drag header, modern glassmorphism design")
+print("AisbergHub v2.0 loaded! Press [K] for smooth menu toggle")
