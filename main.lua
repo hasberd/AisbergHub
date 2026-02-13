@@ -1,99 +1,75 @@
+-- Проверка на повторный запуск
+if getgenv().MyHubLoaded then return end
+getgenv().MyHubLoaded = true
+
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
 local Window = OrionLib:MakeWindow({
-    Name = "AisbergHub v1.0",
+    Name = "Мой Хаб v1.0 (2026)",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "MyHub",
-    IntroEnabled = true
+    ConfigFolder = "MyHubConfig"
 })
 
-local PlayerTab = Window:MakeTab({
-    Name = "Player",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local PlayerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483345998"})
 
-PlayerTab:AddSection({Name = "Настройки игрока"})
+PlayerTab:AddSection({Name = "Движение"})
 
-PlayerTab:AddToggle({
-    Name = "Скорость (WalkSpeed)",
+local SpeedToggle = PlayerTab:AddToggle({
+    Name = "Скорость x3",
     Default = false,
-    Save = true,
-    Flag = "SpeedToggle",
-    Callback = function(Value)
-        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value and 50 or 16
-        end
-    end
-})
-
-PlayerTab:AddToggle({
-    Name = "Высокий прыжок (JumpPower)",
-    Default = false,
-    Save = true,
-    Flag = "JumpToggle",
-    Callback = function(Value)
-        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-            game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value and 100 or 50
-        end
+    Callback = function(v)
+        local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hum then hum.WalkSpeed = v and 48 or 16 end
     end
 })
 
 PlayerTab:AddButton({
-    Name = "ESP (подсветка игроков)",
+    Name = "Инфинити Джамп",
     Callback = function()
-        for _, player in pairs(game.Players:GetPlayers()) do
-            if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local highlight = Instance.new("Highlight", player.Character)
-                highlight.FillColor = Color3.new(1, 0, 0)
-                highlight.OutlineColor = Color3.new(1, 1, 1)
-            end
-        end
-        OrionLib:MakeNotification({
-            Name = "ESP включён",
-            Content = "Все игроки подсвечены!",
-            Time = 3
-        })
+        local UserInputService = game:GetService("UserInputService")
+        local InfiniteJumpEnabled = false
+        UserInputService.JumpRequest:Connect(function()
+            if InfiniteJumpEnabled then game.Players.LocalPlayer.Character.Humanoid:ChangeState("Jumping") end
+        end)
+        InfiniteJumpEnabled = not InfiniteJumpEnabled
+        OrionLib:MakeNotification({Name = "Jump", Content = InfiniteJumpEnabled and "Вкл" or "Выкл", Time = 2})
     end
 })
 
-local CombatTab = Window:MakeTab({
-    Name = "Combat",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local CombatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 
-CombatTab:AddSection({Name = "Бой и телепорт"})
+CombatTab:AddSection({Name = "ESP & TP"})
 
 CombatTab:AddButton({
-    Name = "Телепорт к ближайшему игроку",
+    Name = "ESP Всех игроков",
     Callback = function()
-        local lp = game.Players.LocalPlayer
-        local closest, dist = nil, math.huge
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local d = (p.Character.HumanoidRootPart.Position - lp.Character.HumanoidRootPart.Position).Magnitude
-                if d < dist then closest = p; dist = d end
+        for i,v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                local Highlight = Instance.new("Highlight")
+                Highlight.Name = v.Name .. " ESP"
+                Highlight.Parent = v.Character
+                Highlight.Adornee = v.Character
+                Highlight.FillColor = Color3.new(0,1,0)
             end
-        end
-        if closest then
-            lp.Character.HumanoidRootPart.CFrame = closest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -2)
-            OrionLib:MakeNotification({Name = "TP", Content = "Телепорт к " .. closest.Name, Time = 3})
         end
     end
 })
 
 CombatTab:AddButton({
-    Name = "Выдать инструмент (Tool)",
+    Name = "TP к рандом игроку",
     Callback = function()
-        local tool = Instance.new("Tool")
-        tool.RequiresHandle = false
-        local handle = Instance.new("Part", tool)
-        handle.Name = "Handle"
-        handle.Size = Vector3.new(0, 0, 0)
-        tool.Parent = game.Players.LocalPlayer.Backpack
+        local players = game.Players:GetPlayers()
+        local randomPlayer = players[math.random(1, #players)]
+        if randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame
+        end
     end
 })
 
 OrionLib:Init()
+OrionLib:MakeNotification({
+    Name = "Хаб готов!",
+    Content = "RightShift для меню. VPN включи!",
+    Time = 5
+})
