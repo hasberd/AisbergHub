@@ -1,4 +1,4 @@
---=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Player ESP + Collect Block Essence + ClickerChest) ===--
+--=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + ESP + Collectors + AntiLag) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -81,7 +81,153 @@ local function getHRP()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
---================= COLLECT BLOCK ESSENCE (BlockEssence = Model) =================--
+--================= ANTILAG (агрессивный FPS-boost) =================--
+
+local antiLagEnabled = false
+local storedVisualStuff = {}
+
+local function isCharacterModel(model)
+    if not model:IsA("Model") then return false end
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    local hrp = model:FindFirstChild("HumanoidRootPart")
+    return humanoid ~= nil and hrp ~= nil
+end
+
+local function store(inst, prop, value)
+    table.insert(storedVisualStuff, {
+        instance = inst,
+        property = prop,
+        value = value
+    })
+end
+
+local function applyAntiLag()
+    if antiLagEnabled then return end
+    antiLagEnabled = true
+    storedVisualStuff = {}
+
+    -- 0) Настройки освещения (global)[web:310]
+    local Lighting = game:GetService("Lighting")
+    if Lighting then
+        store(Lighting, "GlobalShadows", Lighting.GlobalShadows)
+        store(Lighting, "FogEnd", Lighting.FogEnd)
+        store(Lighting, "Brightness", Lighting.Brightness)
+        store(Lighting, "EnvironmentSpecularScale", Lighting.EnvironmentSpecularScale)
+        store(Lighting, "EnvironmentDiffuseScale", Lighting.EnvironmentDiffuseScale)
+
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        Lighting.Brightness = 1
+        Lighting.EnvironmentSpecularScale = 0
+        Lighting.EnvironmentDiffuseScale = 0
+    end
+
+    -- 1) Частицы / огонь / следы / лучи / свет и т.п.[web:302][web:303]
+    local visualClasses = {
+        "ParticleEmitter","Trail","Beam","Fire","Smoke","Sparkles",
+        "Explosion","PointLight","SpotLight","SurfaceLight"
+    }
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        for _, className in ipairs(visualClasses) do
+            if obj:IsA(className) then
+                if obj:IsA("Explosion") then
+                    if obj.Visible ~= nil then
+                        store(obj, "Visible", obj.Visible)
+                        obj.Visible = false
+                    end
+                end
+                if obj.Enabled ~= nil then
+                    store(obj, "Enabled", obj.Enabled)
+                    obj.Enabled = false
+                end
+                break
+            end
+        end
+    end
+
+    -- 2) Текстуры / декали / SurfaceAppearance[web:302][web:308]
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Texture") or obj:IsA("Decal") or obj:IsA("SurfaceAppearance") then
+            store(obj, "Parent", obj.Parent)
+            obj.Parent = nil
+        end
+    end
+
+    -- 3) Меши и SpecialMesh (делаем всё кубическим)[web:311]
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("MeshPart") then
+            store(obj, "MeshId", obj.MeshId)
+            store(obj, "TextureID", obj.TextureID)
+            obj.MeshId = ""
+            obj.TextureID = ""
+        elseif obj:IsA("SpecialMesh") then
+            store(obj, "MeshId", obj.MeshId)
+            store(obj, "TextureId", obj.TextureId)
+            obj.MeshId = ""
+            obj.TextureId = ""
+        end
+    end
+
+    -- 4) Террейн‑детали (отражения воды, декор)[web:310]
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        store(terrain, "WaterWaveSize", terrain.WaterWaveSize)
+        store(terrain, "WaterWaveSpeed", terrain.WaterWaveSpeed)
+        store(terrain, "WaterReflectance", terrain.WaterReflectance)
+        store(terrain, "WaterTransparency", terrain.WaterTransparency)
+
+        terrain.WaterWaveSize = 0
+        terrain.WaterWaveSpeed = 0
+        terrain.WaterReflectance = 0
+        terrain.WaterTransparency = 1
+    end
+
+    -- 5) Отключить анимации всего, что не персонаж (окружение, декорации)[web:304][web:307][web:311]
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("AnimationController") or obj:IsA("Animator") then
+            local m = obj:FindFirstAncestorOfClass("Model")
+            if m and not isCharacterModel(m) then
+                local tracks = obj:GetPlayingAnimationTracks()
+                for _, track in ipairs(tracks) do
+                    pcall(function()
+                        track:Stop()
+                    end)
+                end
+            end
+        end
+    end
+
+    -- 6) Урезать детализацию RenderFidelity у деталей (кроме персонажей)[web:310]
+    for _, part in ipairs(Workspace:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local m = part:FindFirstAncestorOfClass("Model")
+            local isChar = m and isCharacterModel(m)
+            if not isChar and part:IsA("MeshPart") then
+                store(part, "RenderFidelity", part.RenderFidelity)
+                part.RenderFidelity = Enum.RenderFidelity.Performance
+            end
+        end
+    end
+end
+
+local function restoreAntiLag()
+    if not antiLagEnabled then return end
+    antiLagEnabled = false
+
+    for _, data in ipairs(storedVisualStuff) do
+        local inst = data.instance
+        if inst and inst.Parent ~= nil or data.property == "Parent" then
+            pcall(function()
+                inst[data.property] = data.value
+            end)
+        end
+    end
+
+    storedVisualStuff = {}
+end
+
+--================= COLLECT BLOCK ESSENCE (BlockEssence = Model, GAME TAB) =================--
 
 local collectingEssence = false
 
@@ -154,14 +300,13 @@ local function collectBlockEssence()
     collectingEssence = false
 end
 
---================= COLLECT CLICKER CHEST (WorldChests/ClickerChest/Hitbox) =================--
+--================= COLLECT CLICKER CHEST (ClickerChest/Hitbox, GAME TAB) =================--
 
 local collectingChest = false
 
 local function findClickerChestHitboxes()
     local list = {}
 
-    -- generic search: any Model named "ClickerChest" with child "Hitbox"
     for _, model in ipairs(Workspace:GetDescendants()) do
         if model:IsA("Model") and model.Name == "ClickerChest" then
             local hitbox = model:FindFirstChild("Hitbox")
@@ -178,7 +323,8 @@ local function collectClickerChests()
     if collectingChest then return end
     collectingChest = true
 
-    local hrp = getHRP()
+    local char = lp.Character or lp.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then
         collectingChest = false
         return
@@ -190,9 +336,13 @@ local function collectClickerChests()
     for _, hit in ipairs(hitboxes) do
         if not collectingChest then break end
         if hit and hit.Parent then
-            -- TP near the hitbox so TouchInterest fires
-            hrp.CFrame = hit.CFrame * CFrame.new(0, 3, 0)
-            task.wait(0.3)
+            -- fake touch from chest hitbox to player HRP[web:312]
+            pcall(function()
+                firetouchinterest(hit, hrp, 0)
+                task.wait(0.05)
+                firetouchinterest(hit, hrp, 1)
+            end)
+            task.wait(0.1)
         end
     end
 
@@ -336,7 +486,7 @@ gamePage.Visible = false
 gamePage.Parent = pagesFrame
 
 local gamePlaceholder = mainPlaceholder:Clone()
-gamePlaceholder.Text = "Game tab: Tap Simulator (auto taps, eggs, boosts)."
+gamePlaceholder.Text = "Game tab: Tap Simulator utilities."
 gamePlaceholder.Parent = gamePage
 
 local visualPage = Instance.new("Frame")
@@ -346,7 +496,7 @@ visualPage.Visible = false
 visualPage.Parent = pagesFrame
 
 local visualPlaceholder = mainPlaceholder:Clone()
-visualPlaceholder.Text = "Visual tab: ESP and visual effects."
+visualPlaceholder.Text = "Visual tab: ESP, AntiLag, visual effects."
 visualPlaceholder.Parent = visualPage
 
 local antiPage = Instance.new("Frame")
@@ -365,7 +515,37 @@ local settingsPlaceholder = mainPlaceholder:Clone()
 settingsPlaceholder.Text = "Settings tab: later we can put colors, keybinds, etc."
 settingsPlaceholder.Parent = settingsPage
 
---================= VISUAL TAB BUTTONS =================--
+--================= GAME TAB BUTTONS (collectors) =================--
+
+local collectEssenceBtn = Instance.new("TextButton")
+collectEssenceBtn.Size = UDim2.new(0, 200, 0, 28)
+collectEssenceBtn.Position = UDim2.new(0, 0, 0, 40)
+collectEssenceBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+collectEssenceBtn.BorderSizePixel = 0
+collectEssenceBtn.Text = "Collect Block Essence"
+collectEssenceBtn.TextColor3 = Color3.fromRGB(230,230,240)
+collectEssenceBtn.Font = Enum.Font.Gotham
+collectEssenceBtn.TextSize = 14
+collectEssenceBtn.TextTransparency = 1
+collectEssenceBtn.AutoButtonColor = false
+collectEssenceBtn.Parent = gamePage
+Instance.new("UICorner", collectEssenceBtn).CornerRadius = UDim.new(0, 6)
+
+local collectChestBtn = Instance.new("TextButton")
+collectChestBtn.Size = UDim2.new(0, 200, 0, 28)
+collectChestBtn.Position = UDim2.new(0, 0, 0, 80)
+collectChestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+collectChestBtn.BorderSizePixel = 0
+collectChestBtn.Text = "Collect Clicker Chest"
+collectChestBtn.TextColor3 = Color3.fromRGB(230,230,240)
+collectChestBtn.Font = Enum.Font.Gotham
+collectChestBtn.TextSize = 14
+collectChestBtn.TextTransparency = 1
+collectChestBtn.AutoButtonColor = false
+collectChestBtn.Parent = gamePage
+Instance.new("UICorner", collectChestBtn).CornerRadius = UDim.new(0, 6)
+
+--================= VISUAL TAB BUTTONS (ESP + AntiLag) =================--
 
 local playerESPBtn = Instance.new("TextButton")
 playerESPBtn.Size = UDim2.new(0, 160, 0, 28)
@@ -381,33 +561,19 @@ playerESPBtn.AutoButtonColor = false
 playerESPBtn.Parent = visualPage
 Instance.new("UICorner", playerESPBtn).CornerRadius = UDim.new(0, 6)
 
-local collectEssenceBtn = Instance.new("TextButton")
-collectEssenceBtn.Size = UDim2.new(0, 200, 0, 28)
-collectEssenceBtn.Position = UDim2.new(0, 0, 0, 70)
-collectEssenceBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-collectEssenceBtn.BorderSizePixel = 0
-collectEssenceBtn.Text = "Collect Block Essence"
-collectEssenceBtn.TextColor3 = Color3.fromRGB(230,230,240)
-collectEssenceBtn.Font = Enum.Font.Gotham
-collectEssenceBtn.TextSize = 14
-collectEssenceBtn.TextTransparency = 1
-collectEssenceBtn.AutoButtonColor = false
-collectEssenceBtn.Parent = visualPage
-Instance.new("UICorner", collectEssenceBtn).CornerRadius = UDim.new(0, 6)
-
-local collectChestBtn = Instance.new("TextButton")
-collectChestBtn.Size = UDim2.new(0, 200, 0, 28)
-collectChestBtn.Position = UDim2.new(0, 0, 0, 110)
-collectChestBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-collectChestBtn.BorderSizePixel = 0
-collectChestBtn.Text = "Collect Clicker Chest"
-collectChestBtn.TextColor3 = Color3.fromRGB(230,230,240)
-collectChestBtn.Font = Enum.Font.Gotham
-collectChestBtn.TextSize = 14
-collectChestBtn.TextTransparency = 1
-collectChestBtn.AutoButtonColor = false
-collectChestBtn.Parent = visualPage
-Instance.new("UICorner", collectChestBtn).CornerRadius = UDim.new(0, 6)
+local antiLagBtn = Instance.new("TextButton")
+antiLagBtn.Size = UDim2.new(0, 200, 0, 28)
+antiLagBtn.Position = UDim2.new(0, 0, 0, 70)
+antiLagBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+antiLagBtn.BorderSizePixel = 0
+antiLagBtn.Text = "AntiLag: OFF"
+antiLagBtn.TextColor3 = Color3.fromRGB(230,230,240)
+antiLagBtn.Font = Enum.Font.Gotham
+antiLagBtn.TextSize = 14
+antiLagBtn.TextTransparency = 1
+antiLagBtn.AutoButtonColor = false
+antiLagBtn.Parent = visualPage
+Instance.new("UICorner", antiLagBtn).CornerRadius = UDim.new(0, 6)
 
 --================= ANTIAFK TAB =================--
 
@@ -514,7 +680,7 @@ settingsTabBtn.MouseButton1Click:Connect(function() setActiveTab("Settings") end
 
 setActiveTab("Main")
 
---================= VISUAL BUTTON HANDLERS =================--
+--================= BUTTON HANDLERS =================--
 
 playerESPBtn.MouseButton1Click:Connect(function()
     togglePlayerESP()
@@ -522,11 +688,23 @@ playerESPBtn.MouseButton1Click:Connect(function()
     playerESPBtn.BackgroundColor3 = playerESPEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
 end)
 
+antiLagBtn.MouseButton1Click:Connect(function()
+    if not antiLagEnabled then
+        applyAntiLag()
+        antiLagBtn.Text = "AntiLag: ON"
+        antiLagBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
+    else
+        restoreAntiLag()
+        antiLagBtn.Text = "AntiLag: OFF"
+        antiLagBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    end
+end)
+
 collectEssenceBtn.MouseButton1Click:Connect(function()
     if not collectingEssence then
-        collectEssenceBtn.Text = "Collecting..."
+        collectingEssenceBtn.Text = "Collecting..."
         collectBlockEssence()
-        collectEssenceBtn.Text = "Collect Block Essence"
+        collectingEssenceBtn.Text = "Collect Block Essence"
     else
         collectingEssence = false
         collectEssenceBtn.Text = "Collect Block Essence"
@@ -544,7 +722,7 @@ collectChestBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---================= ANIMATION =================--
+--================= ANIMATION (open/close) =================--
 
 local isVisible = false
 local tweenTime = 0.3
@@ -556,7 +734,7 @@ local guiElements = {
     mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn, settingsTabBtn,
     mainPlaceholder, gamePlaceholder, visualPlaceholder, settingsPlaceholder,
     antiTitle, antiStatus, antiDesc, antiBtn,
-    playerESPBtn, collectEssenceBtn, collectChestBtn
+    playerESPBtn, collectEssenceBtn, collectChestBtn, antiLagBtn
 }
 
 local function setTextTransparency(value)
@@ -622,6 +800,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.K then
         isVisible = not isVisible
         if isVisible then
+            gui.Enabled = true
             fadeIn()
         else
             fadeOut()
