@@ -1,4 +1,4 @@
---=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + ESP + Collectors + AntiLag) ===--
+--=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + ESP + Collectors + Ultra AntiLag) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -81,7 +81,7 @@ local function getHRP()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
---================= ANTILAG (агрессивный FPS-boost) =================--
+--================= ULTRA ANTILAG =================--
 
 local antiLagEnabled = false
 local storedVisualStuff = {}
@@ -93,36 +93,12 @@ local function isCharacterModel(model)
     return humanoid ~= nil and hrp ~= nil
 end
 
-local function store(inst, prop, value)
-    table.insert(storedVisualStuff, {
-        instance = inst,
-        property = prop,
-        value = value
-    })
-end
-
 local function applyAntiLag()
     if antiLagEnabled then return end
     antiLagEnabled = true
     storedVisualStuff = {}
 
-    -- 0) Настройки освещения (global)[web:310]
-    local Lighting = game:GetService("Lighting")
-    if Lighting then
-        store(Lighting, "GlobalShadows", Lighting.GlobalShadows)
-        store(Lighting, "FogEnd", Lighting.FogEnd)
-        store(Lighting, "Brightness", Lighting.Brightness)
-        store(Lighting, "EnvironmentSpecularScale", Lighting.EnvironmentSpecularScale)
-        store(Lighting, "EnvironmentDiffuseScale", Lighting.EnvironmentDiffuseScale)
-
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-        Lighting.Brightness = 1
-        Lighting.EnvironmentSpecularScale = 0
-        Lighting.EnvironmentDiffuseScale = 0
-    end
-
-    -- 1) Частицы / огонь / следы / лучи / свет и т.п.[web:302][web:303]
+    -- 1) Вырубаем ВСЕ эффекты / свет (particles, trails, beams, огонь, дым, light‑ы)[web:309][web:321]
     local visualClasses = {
         "ParticleEmitter","Trail","Beam","Fire","Smoke","Sparkles",
         "Explosion","PointLight","SpotLight","SurfaceLight"
@@ -131,81 +107,60 @@ local function applyAntiLag()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         for _, className in ipairs(visualClasses) do
             if obj:IsA(className) then
-                if obj:IsA("Explosion") then
-                    if obj.Visible ~= nil then
-                        store(obj, "Visible", obj.Visible)
-                        obj.Visible = false
-                    end
-                end
+                table.insert(storedVisualStuff, {
+                    instance = obj,
+                    property = "Enabled",
+                    value = (obj.Enabled ~= nil) and obj.Enabled or nil
+                })
                 if obj.Enabled ~= nil then
-                    store(obj, "Enabled", obj.Enabled)
                     obj.Enabled = false
+                end
+                if obj:IsA("Explosion") then
+                    obj.Visible = false
                 end
                 break
             end
         end
     end
 
-    -- 2) Текстуры / декали / SurfaceAppearance[web:302][web:308]
+    -- 2) Удаляем Texture / Decal / SurfaceAppearance (полный no‑textures)[web:298][web:318]
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Texture") or obj:IsA("Decal") or obj:IsA("SurfaceAppearance") then
-            store(obj, "Parent", obj.Parent)
+            table.insert(storedVisualStuff, {
+                instance = obj,
+                property = "Parent",
+                value = obj.Parent
+            })
             obj.Parent = nil
         end
     end
 
-    -- 3) Меши и SpecialMesh (делаем всё кубическим)[web:311]
+    -- 3) Обнуляем MeshId/TextureId у MeshPart и SpecialMesh (минимум геометрии)[web:309][web:311]
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("MeshPart") then
-            store(obj, "MeshId", obj.MeshId)
-            store(obj, "TextureID", obj.TextureID)
+            table.insert(storedVisualStuff, {instance = obj, property = "MeshId",    value = obj.MeshId})
+            table.insert(storedVisualStuff, {instance = obj, property = "TextureID", value = obj.TextureID})
             obj.MeshId = ""
             obj.TextureID = ""
         elseif obj:IsA("SpecialMesh") then
-            store(obj, "MeshId", obj.MeshId)
-            store(obj, "TextureId", obj.TextureId)
+            table.insert(storedVisualStuff, {instance = obj, property = "MeshId",    value = obj.MeshId})
+            table.insert(storedVisualStuff, {instance = obj, property = "TextureId", value = obj.TextureId})
             obj.MeshId = ""
             obj.TextureId = ""
         end
     end
 
-    -- 4) Террейн‑детали (отражения воды, декор)[web:310]
-    local terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if terrain then
-        store(terrain, "WaterWaveSize", terrain.WaterWaveSize)
-        store(terrain, "WaterWaveSpeed", terrain.WaterWaveSpeed)
-        store(terrain, "WaterReflectance", terrain.WaterReflectance)
-        store(terrain, "WaterTransparency", terrain.WaterTransparency)
-
-        terrain.WaterWaveSize = 0
-        terrain.WaterWaveSpeed = 0
-        terrain.WaterReflectance = 0
-        terrain.WaterTransparency = 1
-    end
-
-    -- 5) Отключить анимации всего, что не персонаж (окружение, декорации)[web:304][web:307][web:311]
+    -- 4) Останавливаем анимации у не‑персонажей, персонажей не трогаем[web:304][web:307]
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("AnimationController") or obj:IsA("Animator") then
-            local m = obj:FindFirstAncestorOfClass("Model")
-            if m and not isCharacterModel(m) then
+            local characterAncestor = obj:FindFirstAncestorWhichIsA("Model")
+            if characterAncestor and not isCharacterModel(characterAncestor) then
                 local tracks = obj:GetPlayingAnimationTracks()
                 for _, track in ipairs(tracks) do
                     pcall(function()
                         track:Stop()
                     end)
                 end
-            end
-        end
-    end
-
-    -- 6) Урезать детализацию RenderFidelity у деталей (кроме персонажей)[web:310]
-    for _, part in ipairs(Workspace:GetDescendants()) do
-        if part:IsA("BasePart") then
-            local m = part:FindFirstAncestorOfClass("Model")
-            local isChar = m and isCharacterModel(m)
-            if not isChar and part:IsA("MeshPart") then
-                store(part, "RenderFidelity", part.RenderFidelity)
-                part.RenderFidelity = Enum.RenderFidelity.Performance
             end
         end
     end
@@ -217,17 +172,31 @@ local function restoreAntiLag()
 
     for _, data in ipairs(storedVisualStuff) do
         local inst = data.instance
-        if inst and inst.Parent ~= nil or data.property == "Parent" then
-            pcall(function()
-                inst[data.property] = data.value
-            end)
+        if inst then
+            if data.property == "Enabled" and data.value ~= nil then
+                pcall(function()
+                    inst.Enabled = data.value
+                end)
+            elseif data.property == "Parent" and data.value ~= nil then
+                pcall(function()
+                    inst.Parent = data.value
+                end)
+            elseif data.property == "MeshId" and data.value ~= nil then
+                pcall(function()
+                    inst.MeshId = data.value
+                end)
+            elseif (data.property == "TextureID" or data.property == "TextureId") and data.value ~= nil then
+                pcall(function()
+                    inst[data.property] = data.value
+                end)
+            end
         end
     end
 
     storedVisualStuff = {}
 end
 
---================= COLLECT BLOCK ESSENCE (BlockEssence = Model, GAME TAB) =================--
+--================= COLLECT BLOCK ESSENCE (GAME TAB) =================--
 
 local collectingEssence = false
 
@@ -300,7 +269,7 @@ local function collectBlockEssence()
     collectingEssence = false
 end
 
---================= COLLECT CLICKER CHEST (ClickerChest/Hitbox, GAME TAB) =================--
+--================= COLLECT CLICKER CHEST (GAME TAB) =================--
 
 local collectingChest = false
 
@@ -336,7 +305,6 @@ local function collectClickerChests()
     for _, hit in ipairs(hitboxes) do
         if not collectingChest then break end
         if hit and hit.Parent then
-            -- fake touch from chest hitbox to player HRP[web:312]
             pcall(function()
                 firetouchinterest(hit, hrp, 0)
                 task.wait(0.05)
@@ -515,7 +483,7 @@ local settingsPlaceholder = mainPlaceholder:Clone()
 settingsPlaceholder.Text = "Settings tab: later we can put colors, keybinds, etc."
 settingsPlaceholder.Parent = settingsPage
 
---================= GAME TAB BUTTONS (collectors) =================--
+--================= GAME TAB BUTTONS =================--
 
 local collectEssenceBtn = Instance.new("TextButton")
 collectEssenceBtn.Size = UDim2.new(0, 200, 0, 28)
@@ -702,9 +670,9 @@ end)
 
 collectEssenceBtn.MouseButton1Click:Connect(function()
     if not collectingEssence then
-        collectingEssenceBtn.Text = "Collecting..."
+        collectEssenceBtn.Text = "Collecting..."
         collectBlockEssence()
-        collectingEssenceBtn.Text = "Collect Block Essence"
+        collectEssenceBtn.Text = "Collect Block Essence"
     else
         collectingEssence = false
         collectEssenceBtn.Text = "Collect Block Essence"
