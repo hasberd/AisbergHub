@@ -1,4 +1,4 @@
---=== AisbergHub UI (AntiAFK отдельной вкладкой) ===--
+--=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Visual ESP) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -13,6 +13,105 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local lp = Players.LocalPlayer
+
+--================= ESP STATE =================--
+
+local playerESPEnabled = false
+local blockESPEnabled = false
+
+local function clearPlayerESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            local h = plr.Character:FindFirstChild("Aisberg_PlayerESP")
+            if h then h:Destroy() end
+        end
+    end
+end
+
+local function applyPlayerESP()
+    clearPlayerESP()
+    if not playerESPEnabled then return end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "Aisberg_PlayerESP"
+
+            if plr == lp then
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+            elseif lp:IsFriendsWith(plr.UserId) then
+                highlight.FillColor = Color3.fromRGB(255, 255, 255)
+            else
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            end
+
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.Parent = plr.Character
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        if playerESPEnabled then
+            task.wait(1)
+            applyPlayerESP()
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    if plr.Character then
+        local h = plr.Character:FindFirstChild("Aisberg_PlayerESP")
+        if h then h:Destroy() end
+    end
+end)
+
+local function togglePlayerESP()
+    playerESPEnabled = not playerESPEnabled
+    if playerESPEnabled then
+        applyPlayerESP()
+    else
+        clearPlayerESP()
+    end
+end
+
+-- Block Essence ESP
+local blockESPObjects = {}
+
+local function clearBlockESP()
+    for obj, highlight in pairs(blockESPObjects) do
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+    end
+    blockESPObjects = {}
+end
+
+local function scanBlockEssence()
+    clearBlockESP()
+    if not blockESPEnabled then return end
+
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
+        if descendant:IsA("BasePart") and descendant.Name == "BlockEssence" then
+            local h = Instance.new("Highlight")
+            h.Name = "Aisberg_BlockESS"
+            h.FillColor = Color3.fromRGB(255, 255, 255)
+            h.OutlineColor = Color3.fromRGB(255, 255, 255)
+            h.Parent = descendant
+            blockESPObjects[descendant] = h
+        end
+    end
+end
+
+local function toggleBlockESP()
+    blockESPEnabled = not blockESPEnabled
+    if blockESPEnabled then
+        scanBlockEssence()
+    else
+        clearBlockESP()
+    end
+end
 
 --================= GUI BASE =================--
 
@@ -113,10 +212,11 @@ local function createTabButton(name, order)
     return btn
 end
 
-local mainTabBtn   = createTabButton("Main",    1)
-local gameTabBtn   = createTabButton("Game",    2)
-local visualTabBtn = createTabButton("Visual",  3)
-local antiTabBtn   = createTabButton("AntiAFK", 4)
+local mainTabBtn    = createTabButton("Main",     1)
+local gameTabBtn    = createTabButton("Game",     2)
+local visualTabBtn  = createTabButton("Visual",   3)
+local antiTabBtn    = createTabButton("AntiAFK",  4)
+local settingsTabBtn= createTabButton("Settings", 5)
 
 --================= ОБЛАСТЬ КОНТЕНТА СЛЕВА =================--
 
@@ -169,7 +269,61 @@ antiPage.BackgroundTransparency = 1
 antiPage.Visible = false
 antiPage.Parent = pagesFrame
 
---================= AntiAFK блок (в AntiAFK вкладке) =================--
+local settingsPage = Instance.new("Frame")
+settingsPage.Size = UDim2.new(1, 0, 1, 0)
+settingsPage.BackgroundTransparency = 1
+settingsPage.Visible = false
+settingsPage.Parent = pagesFrame
+
+local settingsPlaceholder = mainPlaceholder:Clone()
+settingsPlaceholder.Text = "Settings: позже сюда можно вынести цвета, keybind'ы и т.п."
+settingsPlaceholder.Parent = settingsPage
+
+--================= Visual кнопки =================--
+
+local playerESPBtn = Instance.new("TextButton")
+playerESPBtn.Size = UDim2.new(0, 160, 0, 28)
+playerESPBtn.Position = UDim2.new(0, 0, 0, 30)
+playerESPBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+playerESPBtn.BorderSizePixel = 0
+playerESPBtn.Text = "Player ESP: OFF"
+playerESPBtn.TextColor3 = Color3.fromRGB(230,230,240)
+playerESPBtn.Font = Enum.Font.Gotham
+playerESPBtn.TextSize = 14
+playerESPBtn.TextTransparency = 1
+playerESPBtn.AutoButtonColor = false
+playerESPBtn.Parent = visualPage
+Instance.new("UICorner", playerESPBtn).CornerRadius = UDim.new(0, 6)
+
+local blockESPBtn = Instance.new("TextButton")
+blockESPBtn.Size = UDim2.new(0, 200, 0, 28)
+blockESPBtn.Position = UDim2.new(0, 0, 0, 70)
+blockESPBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+blockESPBtn.BorderSizePixel = 0
+blockESPBtn.Text = "Block Essence ESP: OFF"
+blockESPBtn.TextColor3 = Color3.fromRGB(230,230,240)
+blockESPBtn.Font = Enum.Font.Gotham
+blockESPBtn.TextSize = 14
+blockESPBtn.TextTransparency = 1
+blockESPBtn.AutoButtonColor = false
+blockESPBtn.Parent = visualPage
+Instance.new("UICorner", blockESPBtn).CornerRadius = UDim.new(0, 6)
+
+local refreshBlockBtn = Instance.new("TextButton")
+refreshBlockBtn.Size = UDim2.new(0, 160, 0, 28)
+refreshBlockBtn.Position = UDim2.new(0, 0, 0, 110)
+refreshBlockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+refreshBlockBtn.BorderSizePixel = 0
+refreshBlockBtn.Text = "Refresh Block ESP"
+refreshBlockBtn.TextColor3 = Color3.fromRGB(230,230,240)
+refreshBlockBtn.Font = Enum.Font.Gotham
+refreshBlockBtn.TextSize = 14
+refreshBlockBtn.TextTransparency = 1
+refreshBlockBtn.AutoButtonColor = false
+refreshBlockBtn.Parent = visualPage
+Instance.new("UICorner", refreshBlockBtn).CornerRadius = UDim.new(0, 6)
+
+--================= AntiAFK блок =================--
 
 local antiTitle = Instance.new("TextLabel")
 antiTitle.Size = UDim2.new(1, 0, 0, 20)
@@ -253,25 +407,48 @@ end)
 --================= ЛОГИКА ВКЛАДОК =================--
 
 local function setActiveTab(name)
-    mainPage.Visible   = (name == "Main")
-    gamePage.Visible   = (name == "Game")
-    visualPage.Visible = (name == "Visual")
-    antiPage.Visible   = (name == "AntiAFK")
+    mainPage.Visible     = (name == "Main")
+    gamePage.Visible     = (name == "Game")
+    visualPage.Visible   = (name == "Visual")
+    antiPage.Visible     = (name == "AntiAFK")
+    settingsPage.Visible = (name == "Settings")
 
-    mainTabBtn.BackgroundColor3   = name == "Main"    and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
-    gameTabBtn.BackgroundColor3   = name == "Game"    and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
-    visualTabBtn.BackgroundColor3 = name == "Visual"  and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
-    antiTabBtn.BackgroundColor3   = name == "AntiAFK" and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    mainTabBtn.BackgroundColor3     = name == "Main"     and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    gameTabBtn.BackgroundColor3     = name == "Game"     and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    visualTabBtn.BackgroundColor3   = name == "Visual"   and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    antiTabBtn.BackgroundColor3     = name == "AntiAFK"  and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
+    settingsTabBtn.BackgroundColor3 = name == "Settings" and Color3.fromRGB(50,50,80) or Color3.fromRGB(30,30,45)
 end
 
 mainTabBtn.MouseButton1Click:Connect(function() setActiveTab("Main") end)
 gameTabBtn.MouseButton1Click:Connect(function() setActiveTab("Game") end)
 visualTabBtn.MouseButton1Click:Connect(function() setActiveTab("Visual") end)
 antiTabBtn.MouseButton1Click:Connect(function() setActiveTab("AntiAFK") end)
+settingsTabBtn.MouseButton1Click:Connect(function() setActiveTab("Settings") end)
 
 setActiveTab("Main")
 
---================= АНИМАЦИЯ (меню + кнопки синхронно) =================--
+--================= ОБРАБОТЧИКИ VISUAL КНОПОК =================--
+
+playerESPBtn.MouseButton1Click:Connect(function()
+    togglePlayerESP()
+    playerESPBtn.Text = playerESPEnabled and "Player ESP: ON" or "Player ESP: OFF"
+    playerESPBtn.BackgroundColor3 = playerESPEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
+end)
+
+blockESPBtn.MouseButton1Click:Connect(function()
+    toggleBlockESP()
+    blockESPBtn.Text = blockESPEnabled and "Block Essence ESP: ON" or "Block Essence ESP: OFF"
+    blockESPBtn.BackgroundColor3 = blockESPEnabled and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(35,35,50)
+end)
+
+refreshBlockBtn.MouseButton1Click:Connect(function()
+    if blockESPEnabled then
+        scanBlockEssence()
+    end
+end)
+
+--================= АНИМАЦИЯ =================--
 
 local isVisible = false
 local tweenTime = 0.3
@@ -280,9 +457,10 @@ local direction = Enum.EasingDirection.Out
 
 local guiElements = {
     title, subtitle, closeBtn,
-    mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn,
-    mainPlaceholder, gamePlaceholder, visualPlaceholder,
-    antiTitle, antiStatus, antiDesc, antiBtn
+    mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn, settingsTabBtn,
+    mainPlaceholder, gamePlaceholder, visualPlaceholder, settingsPlaceholder,
+    antiTitle, antiStatus, antiDesc, antiBtn,
+    playerESPBtn, blockESPBtn, refreshBlockBtn
 }
 
 local function setTextTransparency(value)
@@ -330,7 +508,7 @@ local function fadeOut(callback)
     end)
 end
 
---================= КНОПКА ЗАКРЫТИЯ И КЛАВИША K =================--
+--================= КЛАВИША K И ЗАКРЫТИЕ =================--
 
 closeBtn.MouseButton1Click:Connect(function()
     if isVisible then
@@ -355,4 +533,4 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
-print("AisbergHub UI загружен. Нажми K для меню (AntiAFK во вкладке AntiAFK).")
+print("AisbergHub UI загружен. Нажми K для меню.")
