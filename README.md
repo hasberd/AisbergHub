@@ -38,11 +38,11 @@ local function applyPlayerESP()
             highlight.Name = "Aisberg_PlayerESP"
 
             if plr == lp then
-                highlight.FillColor = Color3.fromRGB(0, 255, 0)
-            elseif lp:IsFriendsWith(plr.UserId) then
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)          -- ты
+            elseif lp:IsFriendsWith(plr.UserId) then                    -- друзья
                 highlight.FillColor = Color3.fromRGB(255, 255, 255)
             else
-                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)          -- остальные
             end
 
             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -212,11 +212,11 @@ local function createTabButton(name, order)
     return btn
 end
 
-local mainTabBtn    = createTabButton("Main",     1)
-local gameTabBtn    = createTabButton("Game",     2)
-local visualTabBtn  = createTabButton("Visual",   3)
-local antiTabBtn    = createTabButton("AntiAFK",  4)
-local settingsTabBtn= createTabButton("Settings", 5)
+local mainTabBtn     = createTabButton("Main",     1)
+local gameTabBtn     = createTabButton("Game",     2)
+local visualTabBtn   = createTabButton("Visual",   3)
+local antiTabBtn     = createTabButton("AntiAFK",  4)
+local settingsTabBtn = createTabButton("Settings", 5)
 
 --================= ОБЛАСТЬ КОНТЕНТА СЛЕВА =================--
 
