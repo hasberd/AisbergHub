@@ -1,4 +1,4 @@
---=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Visual ESP) ===--
+--=== AisbergHub UI (Main/Game/Visual/AntiAFK/Settings + Visual Collect BlockEssence) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -17,7 +17,6 @@ local lp = Players.LocalPlayer
 --================= ESP STATE =================--
 
 local playerESPEnabled = false
-local blockESPEnabled = false
 
 local function clearPlayerESP()
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -38,11 +37,11 @@ local function applyPlayerESP()
             highlight.Name = "Aisberg_PlayerESP"
 
             if plr == lp then
-                highlight.FillColor = Color3.fromRGB(0, 255, 0)          -- ты
-            elseif lp:IsFriendsWith(plr.UserId) then                    -- друзья
+                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+            elseif lp:IsFriendsWith(plr.UserId) then
                 highlight.FillColor = Color3.fromRGB(255, 255, 255)
             else
-                highlight.FillColor = Color3.fromRGB(255, 0, 0)          -- остальные
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)
             end
 
             highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -76,41 +75,59 @@ local function togglePlayerESP()
     end
 end
 
--- Block Essence ESP
-local blockESPObjects = {}
+--================= COLLECT BLOCK ESSENCE =================--
 
-local function clearBlockESP()
-    for obj, highlight in pairs(blockESPObjects) do
-        if highlight and highlight.Parent then
-            highlight:Destroy()
-        end
-    end
-    blockESPObjects = {}
+local collectingBlockEssence = false
+
+local function getHRP()
+    local char = lp.Character or lp.CharacterAdded:Wait()
+    return char:FindFirstChild("HumanoidRootPart")
 end
 
-local function scanBlockEssence()
-    clearBlockESP()
-    if not blockESPEnabled then return end
+local function getNearestBlockEssence()
+    local hrp = getHRP()
+    if not hrp then return nil end
 
-    for _, descendant in ipairs(Workspace:GetDescendants()) do
-        if descendant:IsA("BasePart") and descendant.Name == "BlockEssence" then
-            local h = Instance.new("Highlight")
-            h.Name = "Aisberg_BlockESS"
-            h.FillColor = Color3.fromRGB(255, 255, 255)
-            h.OutlineColor = Color3.fromRGB(255, 255, 255)
-            h.Parent = descendant
-            blockESPObjects[descendant] = h
+    local nearest, dist = nil, math.huge
+    for _, d in ipairs(Workspace:GetDescendants()) do
+        if d:IsA("BasePart") and d.Name == "BlockEssence" then
+            local mag = (d.Position - hrp.Position).Magnitude
+            if mag < dist then
+                dist = mag
+                nearest = d
+            end
         end
     end
+    return nearest, dist
 end
 
-local function toggleBlockESP()
-    blockESPEnabled = not blockESPEnabled
-    if blockESPEnabled then
-        scanBlockEssence()
-    else
-        clearBlockESP()
-    end
+local function startCollectBlockEssence()
+    if collectingBlockEssence then return end
+    collectingBlockEssence = true
+
+    task.spawn(function()
+        while collectingBlockEssence do
+            local hrp = getHRP()
+            if not hrp then break end
+
+            local target = getNearestBlockEssence()
+            if target then
+                -- телепорт чуть выше/рядом, чтобы не застрять
+                hrp.CFrame = target.CFrame + Vector3.new(0, 3, 0)  -- можно сделать смещение в сторону, если надо
+                -- если игра требует зажатия E, сюда вписываешь keyhold / keypress из своего executor
+                -- пример (ЗАГЛУШКА, адаптируй под свой API):
+                -- if keyhold then
+                --     keyhold(Enum.KeyCode.E, 0.5) -- держать 0.5 сек
+                -- end
+            end
+
+            task.wait(0.5) -- задержка между поиском/ТП, подстрой под игру
+        end
+    end)
+end
+
+local function stopCollectBlockEssence()
+    collectingBlockEssence = false
 end
 
 --================= GUI BASE =================--
@@ -295,33 +312,19 @@ playerESPBtn.AutoButtonColor = false
 playerESPBtn.Parent = visualPage
 Instance.new("UICorner", playerESPBtn).CornerRadius = UDim.new(0, 6)
 
-local blockESPBtn = Instance.new("TextButton")
-blockESPBtn.Size = UDim2.new(0, 200, 0, 28)
-blockESPBtn.Position = UDim2.new(0, 0, 0, 70)
-blockESPBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-blockESPBtn.BorderSizePixel = 0
-blockESPBtn.Text = "Block Essence ESP: OFF"
-blockESPBtn.TextColor3 = Color3.fromRGB(230,230,240)
-blockESPBtn.Font = Enum.Font.Gotham
-blockESPBtn.TextSize = 14
-blockESPBtn.TextTransparency = 1
-blockESPBtn.AutoButtonColor = false
-blockESPBtn.Parent = visualPage
-Instance.new("UICorner", blockESPBtn).CornerRadius = UDim.new(0, 6)
-
-local refreshBlockBtn = Instance.new("TextButton")
-refreshBlockBtn.Size = UDim2.new(0, 160, 0, 28)
-refreshBlockBtn.Position = UDim2.new(0, 0, 0, 110)
-refreshBlockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-refreshBlockBtn.BorderSizePixel = 0
-refreshBlockBtn.Text = "Refresh Block ESP"
-refreshBlockBtn.TextColor3 = Color3.fromRGB(230,230,240)
-refreshBlockBtn.Font = Enum.Font.Gotham
-refreshBlockBtn.TextSize = 14
-refreshBlockBtn.TextTransparency = 1
-refreshBlockBtn.AutoButtonColor = false
-refreshBlockBtn.Parent = visualPage
-Instance.new("UICorner", refreshBlockBtn).CornerRadius = UDim.new(0, 6)
+local collectBlockBtn = Instance.new("TextButton")
+collectBlockBtn.Size = UDim2.new(0, 200, 0, 28)
+collectBlockBtn.Position = UDim2.new(0, 0, 0, 70)
+collectBlockBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+collectBlockBtn.BorderSizePixel = 0
+collectBlockBtn.Text = "Collect Block Essence: OFF"
+collectBlockBtn.TextColor3 = Color3.fromRGB(230,230,240)
+collectBlockBtn.Font = Enum.Font.Gotham
+collectBlockBtn.TextSize = 14
+collectBlockBtn.TextTransparency = 1
+collectBlockBtn.AutoButtonColor = false
+collectBlockBtn.Parent = visualPage
+Instance.new("UICorner", collectBlockBtn).CornerRadius = UDim.new(0, 6)
 
 --================= AntiAFK блок =================--
 
@@ -436,15 +439,16 @@ playerESPBtn.MouseButton1Click:Connect(function()
     playerESPBtn.BackgroundColor3 = playerESPEnabled and Color3.fromRGB(80, 40, 40) or Color3.fromRGB(35,35,50)
 end)
 
-blockESPBtn.MouseButton1Click:Connect(function()
-    toggleBlockESP()
-    blockESPBtn.Text = blockESPEnabled and "Block Essence ESP: ON" or "Block Essence ESP: OFF"
-    blockESPBtn.BackgroundColor3 = blockESPEnabled and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(35,35,50)
-end)
-
-refreshBlockBtn.MouseButton1Click:Connect(function()
-    if blockESPEnabled then
-        scanBlockEssence()
+collectBlockBtn.MouseButton1Click:Connect(function()
+    collectingBlockEssence = not collectingBlockEssence
+    if collectingBlockEssence then
+        collectBlockBtn.Text = "Collect Block Essence: ON"
+        collectBlockBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        startCollectBlockEssence()
+    else
+        collectBlockBtn.Text = "Collect Block Essence: OFF"
+        collectBlockBtn.BackgroundColor3 = Color3.fromRGB(35,35,50)
+        stopCollectBlockEssence()
     end
 end)
 
@@ -460,7 +464,7 @@ local guiElements = {
     mainTabBtn, gameTabBtn, visualTabBtn, antiTabBtn, settingsTabBtn,
     mainPlaceholder, gamePlaceholder, visualPlaceholder, settingsPlaceholder,
     antiTitle, antiStatus, antiDesc, antiBtn,
-    playerESPBtn, blockESPBtn, refreshBlockBtn
+    playerESPBtn, collectBlockBtn
 }
 
 local function setTextTransparency(value)
