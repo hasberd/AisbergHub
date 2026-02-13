@@ -15,7 +15,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local lp = Players.LocalPlayer
 
---================= ESP STATE =================--
+--================= PLAYER ESP =================--
 
 local playerESPEnabled = false
 
@@ -76,32 +76,51 @@ local function togglePlayerESP()
     end
 end
 
---================= Collect Block Essence =================--
+--================= Collect Block Essence (BlockEssence = Model) =================--
 
 local collectingEssence = false
-local essenceMeshId = "rbxassetid://202604402" -- seedblock для Normal Block Essence[web:282]
+local essenceMeshId = "rbxassetid://202604402" -- seedblock Normal Block Essence
 
 local function getHRP()
     local char = lp.Character or lp.CharacterAdded:Wait()
     return char:FindFirstChild("HumanoidRootPart")
 end
 
-local function findEssenceBlocks()
+-- ищем МОДЕЛИ BlockEssence и в них подходящий Part
+local function findEssenceModels()
     local list = {}
+
     for _, d in ipairs(Workspace:GetDescendants()) do
-        if d:IsA("BasePart") and d.Name == "BlockEssence" then
-            local meshId = nil
-            if d:IsA("MeshPart") then
-                meshId = d.MeshId
+        if d:IsA("Model") and d.Name == "BlockEssence" then
+            local targetPart
+
+            if d.PrimaryPart and d.PrimaryPart:IsA("BasePart") then
+                targetPart = d.PrimaryPart
             else
-                local mesh = d:FindFirstChildOfClass("SpecialMesh")
-                if mesh then meshId = mesh.MeshId end
+                for _, child in ipairs(d:GetDescendants()) do
+                    if child:IsA("BasePart") then
+                        targetPart = child
+                        break
+                    end
+                end
             end
-            if meshId and meshId == essenceMeshId then
-                table.insert(list, d)
+
+            if targetPart then
+                local meshId = nil
+                if targetPart:IsA("MeshPart") then
+                    meshId = targetPart.MeshId
+                else
+                    local mesh = targetPart:FindFirstChildOfClass("SpecialMesh")
+                    if mesh then meshId = mesh.MeshId end
+                end
+
+                if meshId and meshId == essenceMeshId then
+                    table.insert(list, targetPart)
+                end
             end
         end
     end
+
     return list
 end
 
@@ -115,25 +134,31 @@ local function collectBlockEssence()
         return
     end
 
-    local blocks = findEssenceBlocks()
+    local blocks = findEssenceModels()
+    print("BlockEssence models found:", #blocks)
+
     for _, part in ipairs(blocks) do
         if not collectingEssence then break end
         if part and part.Parent then
-            -- телепорт чуть рядом/над блоком
             hrp.CFrame = part.CFrame * CFrame.new(0, 3, 0)
             task.wait(0.2)
 
-            -- ищем ProximityPrompt (если игра использует E через Prompt)[web:278][web:283]
-            local prompt = part:FindFirstChildOfClass("ProximityPrompt") or part:FindFirstChildWhichIsA("ProximityPrompt", true)
+            local model = part:FindFirstAncestorOfClass("Model") or part.Parent
+            local prompt = nil
+            if model then
+                prompt = model:FindFirstChildOfClass("ProximityPrompt")
+                    or model:FindFirstChildWhichIsA("ProximityPrompt", true)
+            end
+
             if prompt then
-                -- имитация удержания E: несколько попыток Trigger
                 for i = 1, 5 do
                     if not collectingEssence then break end
-                    fireproximityprompt(prompt, 1) -- большинство эксплойтов поддерживают эту функцию
+                    pcall(function()
+                        fireproximityprompt(prompt, 1)
+                    end)
                     task.wait(0.25)
                 end
             else
-                -- если нет Prompt — просто постоять рядом (вдруг автосбор по касанию)
                 task.wait(0.5)
             end
         end
