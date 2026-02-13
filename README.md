@@ -1,4 +1,4 @@
---=== AisbergHub Soft Menu (Clean + Players TP + Info) ===--
+--=== AisbergHub Soft Menu (step 1–4) ===--
 
 if getgenv and getgenv().AisbergHubLoaded then
     return
@@ -10,12 +10,11 @@ end
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local lp = Players.LocalPlayer
 
---================= FEATURES =================--
-
-local currentSpeed = 16
+--================= UTILS =================--
 
 local function getHumanoid()
     local char = lp.Character or lp.CharacterAdded:Wait()
@@ -26,6 +25,10 @@ local function getHRP()
     local char = lp.Character or lp.CharacterAdded:Wait()
     return char:FindFirstChild("HumanoidRootPart")
 end
+
+--================= FEATURES: Speed / ESP / TP / InfJump =================--
+
+local currentSpeed = 16
 
 local function applySpeed()
     local hum = getHumanoid()
@@ -39,7 +42,7 @@ local function setSpeedFromValue(val)
     applySpeed()
 end
 
--- ESP: ты зелёный, остальные красные
+-- ESP
 local espEnabled = false
 
 local function clearESP()
@@ -56,15 +59,15 @@ local function refreshESP()
     if not espEnabled then return end
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr.Character then
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "AisbergESP"
+            local h = Instance.new("Highlight")
+            h.Name = "AisbergESP"
             if plr == lp then
-                highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                h.FillColor = Color3.fromRGB(0,255,0)
             else
-                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                h.FillColor = Color3.fromRGB(255,0,0)
             end
-            highlight.OutlineColor = Color3.new(1,1,1)
-            highlight.Parent = plr.Character
+            h.OutlineColor = Color3.new(1,1,1)
+            h.Parent = plr.Character
         end
     end
 end
@@ -73,9 +76,9 @@ local function toggleESP()
     espEnabled = not espEnabled
     if not espEnabled then
         clearESP()
-        return
+    else
+        refreshESP()
     end
-    refreshESP()
 end
 
 Players.PlayerAdded:Connect(function(plr)
@@ -87,11 +90,12 @@ Players.PlayerAdded:Connect(function(plr)
     end)
 end)
 
+-- TP к ближайшему
 local function tpToNearest()
     local hrp = getHRP()
     if not hrp then return end
-
     local closest, dist = nil, math.huge
+
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= lp and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
             local d = (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
@@ -106,6 +110,7 @@ local function tpToNearest()
     end
 end
 
+-- Infinite Jump
 local infJumpEnabled = false
 local infJumpConnection
 
@@ -125,7 +130,38 @@ local function toggleInfJump()
     end
 end
 
---================= GUI BASE =================--
+--================= FEATURE 3: AntiAFK =================--
+
+local antiAFKEnabled = false
+local antiAFKConn
+local angle = 0
+
+local function setAntiAFK(on)
+    antiAFKEnabled = on
+    if antiAFKConn then
+        antiAFKConn:Disconnect()
+        antiAFKConn = nil
+    end
+    if antiAFKEnabled then
+        local cam = workspace.CurrentCamera
+        antiAFKConn = RunService.RenderStepped:Connect(function(dt)
+            if not cam then return end
+            angle += dt * 0.4
+            local hrp = getHRP()
+            if hrp then
+                local offset = CFrame.new(0, 3, 10) * CFrame.Angles(0, angle, 0)
+                cam.CFrame = CFrame.new(hrp.Position) * offset
+            end
+        end)
+        local vu = game:GetService("VirtualUser")
+        lp.Idled:Connect(function()
+            vu:CaptureController()
+            vu:ClickButton2(Vector2.new())
+        end)
+    end
+end
+
+--================= GUI BASE (1: полупрозрачный фон) =================--
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "AisbergHubUI"
@@ -135,11 +171,11 @@ gui.Parent = lp:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+frame.BackgroundTransparency = 0.3 -- полу‑прозрачный фон
 frame.BorderSizePixel = 0
 frame.Size = UDim2.new(0, 420, 0, 260)
 frame.Position = UDim2.new(0.5, -210, 1, 10)
 frame.Visible = false
-frame.BackgroundTransparency = 1
 frame.Parent = gui
 
 local corner = Instance.new("UICorner", frame)
@@ -150,7 +186,7 @@ shadow.Name = "Shadow"
 shadow.BackgroundTransparency = 1
 shadow.Image = "rbxassetid://5028857084"
 shadow.ImageColor3 = Color3.new(0,0,0)
-shadow.ImageTransparency = 0.4
+shadow.ImageTransparency = 0.5
 shadow.ScaleType = Enum.ScaleType.Slice
 shadow.SliceCenter = Rect.new(24,24,276,276)
 shadow.Size = UDim2.new(1, 30, 1, 30)
@@ -184,7 +220,7 @@ closeBtn.AutoButtonColor = false
 closeBtn.Parent = frame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
 
--- Tab buttons (Main / Players / Info)
+-- Tabs
 local tabsFrame = Instance.new("Frame")
 tabsFrame.Size = UDim2.new(0, 260, 0, 30)
 tabsFrame.Position = UDim2.new(0, 10, 0, 40)
@@ -233,7 +269,7 @@ infoTabBtn.AutoButtonColor = false
 infoTabBtn.Parent = tabsFrame
 Instance.new("UICorner", infoTabBtn).CornerRadius = UDim.new(0, 6)
 
---================= MAIN TAB =================--
+--================= MAIN TAB (Speed / ESP / TP / InfJump / AntiAFK) =================--
 
 local mainPage = Instance.new("Frame")
 mainPage.Size = UDim2.new(1, -20, 1, -80)
@@ -244,7 +280,7 @@ mainPage.Parent = frame
 -- Speed slider
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(0, 170, 0, 20)
-speedLabel.Position = UDim2.new(0, 200, 0, 0)
+speedLabel.Position = UDim2.new(0, 220, 0, 0)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Text = "Speed: " .. currentSpeed
 speedLabel.TextColor3 = Color3.fromRGB(230,230,240)
@@ -255,7 +291,7 @@ speedLabel.Parent = mainPage
 
 local sliderBar = Instance.new("Frame")
 sliderBar.Size = UDim2.new(0, 170, 0, 6)
-sliderBar.Position = UDim2.new(0, 200, 0, 25)
+sliderBar.Position = UDim2.new(0, 220, 0, 25)
 sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 sliderBar.BorderSizePixel = 0
 sliderBar.Parent = mainPage
@@ -312,7 +348,7 @@ end)
 
 -- ESP / TP / InfJump buttons
 local espBtn = Instance.new("TextButton")
-espBtn.Size = UDim2.new(0, 170, 0, 30)
+espBtn.Size = UDim2.new(0, 190, 0, 30)
 espBtn.Position = UDim2.new(0, 10, 0, 0)
 espBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 espBtn.BorderSizePixel = 0
@@ -326,7 +362,7 @@ espBtn.Parent = mainPage
 Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 8)
 
 local tpBtn = Instance.new("TextButton")
-tpBtn.Size = UDim2.new(0, 170, 0, 30)
+tpBtn.Size = UDim2.new(0, 190, 0, 30)
 tpBtn.Position = UDim2.new(0, 10, 0, 40)
 tpBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 tpBtn.BorderSizePixel = 0
@@ -340,7 +376,7 @@ tpBtn.Parent = mainPage
 Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 8)
 
 local infBtn = Instance.new("TextButton")
-infBtn.Size = UDim2.new(0, 170, 0, 30)
+infBtn.Size = UDim2.new(0, 190, 0, 30)
 infBtn.Position = UDim2.new(0, 10, 0, 80)
 infBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 infBtn.BorderSizePixel = 0
@@ -353,7 +389,54 @@ infBtn.AutoButtonColor = false
 infBtn.Parent = mainPage
 Instance.new("UICorner", infBtn).CornerRadius = UDim.new(0, 8)
 
---================= PLAYERS TAB =================--
+-- FEATURE 3: AntiAFK UI
+local aaFrame = Instance.new("Frame")
+aaFrame.Size = UDim2.new(0, 190, 0, 60)
+aaFrame.Position = UDim2.new(0, 10, 0, 120)
+aaFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+aaFrame.BorderSizePixel = 0
+aaFrame.Parent = mainPage
+Instance.new("UICorner", aaFrame).CornerRadius = UDim.new(0, 8)
+
+local aaTitle = Instance.new("TextLabel")
+aaTitle.Size = UDim2.new(1, -10, 0, 20)
+aaTitle.Position = UDim2.new(0, 5, 0, 5)
+aaTitle.BackgroundTransparency = 1
+aaTitle.Text = "Aisberg AntiAFK"
+aaTitle.TextColor3 = Color3.fromRGB(230,230,240)
+aaTitle.Font = Enum.Font.GothamBold
+aaTitle.TextSize = 14
+aaTitle.TextXAlignment = Enum.TextXAlignment.Left
+aaTitle.TextTransparency = 1
+aaTitle.Parent = aaFrame
+
+local aaStatus = Instance.new("TextLabel")
+aaStatus.Size = UDim2.new(1, -10, 0, 18)
+aaStatus.Position = UDim2.new(0, 5, 0, 28)
+aaStatus.BackgroundTransparency = 1
+aaStatus.Text = "Status: Inactive"
+aaStatus.TextColor3 = Color3.fromRGB(200,200,210)
+aaStatus.Font = Enum.Font.Gotham
+aaStatus.TextSize = 13
+aaStatus.TextXAlignment = Enum.TextXAlignment.Left
+aaStatus.TextTransparency = 1
+aaStatus.Parent = aaFrame
+
+local aaToggleBtn = Instance.new("TextButton")
+aaToggleBtn.Size = UDim2.new(0, 70, 0, 20)
+aaToggleBtn.Position = UDim2.new(1, -80, 0, 28)
+aaToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+aaToggleBtn.BorderSizePixel = 0
+aaToggleBtn.Text = "Toggle"
+aaToggleBtn.TextColor3 = Color3.fromRGB(230,230,240)
+aaToggleBtn.Font = Enum.Font.Gotham
+aaToggleBtn.TextSize = 12
+aaToggleBtn.TextTransparency = 1
+aaToggleBtn.AutoButtonColor = false
+aaToggleBtn.Parent = aaFrame
+Instance.new("UICorner", aaToggleBtn).CornerRadius = UDim.new(0, 6)
+
+--================= PLAYERS TAB (4: TP к конкретным игрокам) =================--
 
 local playersPage = Instance.new("Frame")
 playersPage.Size = UDim2.new(1, -20, 1, -80)
@@ -523,7 +606,7 @@ end)
 
 setActiveTab("Main")
 
---================= ANIMATION =================--
+--================= ANIMATION (2: плавное уменьшение/увеличение) =================--
 
 local isVisible = false
 local tweenTime = 0.35
@@ -532,15 +615,18 @@ local direction = Enum.EasingDirection.Out
 
 local function fadeIn()
     frame.Visible = true
+    frame.Size = UDim2.new(0, 0, 0, 0)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Position = UDim2.new(0.5, -210, 0.5, -130),
-        BackgroundTransparency = 0
+        Size = UDim2.new(0, 420, 0, 260),
+        Position = UDim2.new(0.5, -210, 0.5, -130)
     }):Play()
 
     local elems = {
         title, closeBtn,
         mainTabBtn, playersTabBtn, infoTabBtn,
         speedLabel, espBtn, tpBtn, infBtn,
+        aaTitle, aaStatus, aaToggleBtn,
         playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
     }
 
@@ -551,14 +637,15 @@ end
 
 local function fadeOut(callback)
     TweenService:Create(frame, TweenInfo.new(tweenTime, easing, direction), {
-        Position = UDim2.new(0.5, -210, 1, 10),
-        BackgroundTransparency = 1
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
     }):Play()
 
     local elems = {
         title, closeBtn,
         mainTabBtn, playersTabBtn, infoTabBtn,
         speedLabel, espBtn, tpBtn, infBtn,
+        aaTitle, aaStatus, aaToggleBtn,
         playersLabel, infoTitle, posLabel, speedInfoLabel, jpLabel
     }
 
@@ -599,6 +686,12 @@ infBtn.MouseButton1Click:Connect(function()
     toggleInfJump()
     infBtn.Text = infJumpEnabled and "Infinite Jump: ON" or "Infinite Jump: OFF"
     infBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(80, 40, 80) or Color3.fromRGB(35, 35, 50)
+end)
+
+aaToggleBtn.MouseButton1Click:Connect(function()
+    setAntiAFK(not antiAFKEnabled)
+    aaStatus.Text = "Status: " .. (antiAFKEnabled and "Active" or "Inactive")
+    aaStatus.TextColor3 = antiAFKEnabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(200,200,210)
 end)
 
 --================= KEYBIND (K) =================--
