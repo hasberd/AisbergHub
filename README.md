@@ -1,4 +1,4 @@
--- Midnight Chasers Autofarm GUI (по точкам маршрута)
+-- Midnight Chasers Autofarm GUI (маршрут + очистка мира)
 
 local Players   = game:GetService("Players")
 local UIS       = game:GetService("UserInputService")
@@ -114,6 +114,44 @@ local function getSpeed()
 end
 
 --------------------------------------------------
+-- Скрытие/возврат препятствий
+--------------------------------------------------
+
+local function hideWorkspaceObjects(plr)
+    if not game.ReplicatedStorage:FindFirstChild("mrbackupfolder") then
+        local folder = Instance.new("Folder", game.ReplicatedStorage)
+        folder.Name = "mrbackupfolder"
+    end
+    local backup = game.ReplicatedStorage:FindFirstChild("mrbackupfolder")
+
+    for _, v in pairs(workspace:GetChildren()) do
+        if (
+            v.ClassName == "Model"
+            and not string.find(v.Name, plr.Name)
+            and not string.find(v.Name, plr.DisplayName)
+            and v.Name ~= ""
+        ) or (
+            v.ClassName == "Folder"
+            and not string.find(v.Name, plr.Name)
+            and not string.find(v.Name, plr.DisplayName)
+            and v.Name ~= ""
+        ) or v:IsA("MeshPart") then
+            v.Parent = backup
+        end
+    end
+end
+
+local function restoreWorkspaceObjects()
+    local backup = game.ReplicatedStorage:FindFirstChild("mrbackupfolder")
+    if backup then
+        for _, v in pairs(backup:GetChildren()) do
+            v.Parent = workspace
+            task.wait()
+        end
+    end
+end
+
+--------------------------------------------------
 -- Логика движения машины
 --------------------------------------------------
 
@@ -134,7 +172,8 @@ local currentTween
 
 local function tweenToPosition(car, targetCFrame, speed)
     local plr = LocalPlayer
-    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    local char = plr.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     local targetPos = targetCFrame.Position
@@ -165,17 +204,17 @@ local function tweenToPosition(car, targetCFrame, speed)
     cfValue:Destroy()
 end
 
--- точки маршрута из найденного скрипта
+-- точки маршрута
 local frames = {
-    CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(2751.86499, -26.0098934, 3694.63354, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(-8821.48438, -26.0098934, 2042.49939, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(-6408.62109, -26.0098934, -727.765198, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(-6099.79639, -26.00989345, -1027.94556, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(-6066.70068, -26.0098934, 493.255524, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(132.786133, -26.0098934, 15.2286377, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(-7692.85449, -26.0098934, -4668.61963, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
-    CFrame.new(4887.24609, -26.0098934, 1222.96826, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414)
+    CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(2751.86499, -26.0098934, 3694.63354, 3.35e-05, 0.951051414, -0.309032798, -1, 3.35e-05, -5.32e-06, 5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(-8821.48438, -26.0098934, 2042.49939, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(-6408.62109, -26.0098934, -727.765198, 3.35e-05, 0.951051414, -0.309032798, -1, 3.35e-05, -5.32e-06, 5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(-6099.79639, -26.00989345, -1027.94556, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(-6066.70068, -26.0098934, 493.255524, 3.35e-05, 0.951051414, -0.309032798, -1, 3.35e-05, -5.32e-06, 5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(132.786133, -26.0098934, 15.2286377, 3.35e-05, 0.951051414, -0.309032798, -1, 3.35e-05, -5.32e-06, 5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(-7692.85449, -26.0098934, -4668.61963, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414),
+    CFrame.new(4887.24609, -26.0098934, 1222.96826, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414)
 }
 
 local autofarmRunning = false
@@ -184,8 +223,11 @@ local function runAutofarm()
     autofarmRunning = true
     ensureGroundPart()
 
+    local plr = LocalPlayer
+    hideWorkspaceObjects(plr)
+    task.wait()
+
     while autofarmRunning do
-        local plr = LocalPlayer
         local char = plr.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local seat = hum and hum.SeatPart
@@ -194,14 +236,14 @@ local function runAutofarm()
             task.wait(0.2)
         else
             local car = seat.Parent
-            local weight = car:FindFirstChild("Body") and car.Body:FindFirstChild("#Weight")
+            local body = car:FindFirstChild("Body")
+            local weight = body and body:FindFirstChild("#Weight")
             if not weight then
                 warn("Не найден Body/#Weight в машине")
-                return
+                break
             end
 
             car.PrimaryPart = weight
-
             local speed = getSpeed()
 
             for _, cf in ipairs(frames) do
@@ -214,6 +256,7 @@ local function runAutofarm()
     if currentTween then
         currentTween:Cancel()
     end
+    restoreWorkspaceObjects()
 end
 
 --------------------------------------------------
@@ -233,11 +276,16 @@ autofarmBtn.Parent = mainFrame
 
 autofarmBtn.MouseButton1Click:Connect(function()
     if not autofarmRunning then
+        autofarmRunning = true
         autofarmBtn.Text = "Stop Autofarm"
         task.spawn(runAutofarm)
     else
         autofarmRunning = false
         autofarmBtn.Text = "Start Autofarm"
+        if currentTween then
+            currentTween:Cancel()
+        end
+        restoreWorkspaceObjects()
     end
 end)
 
