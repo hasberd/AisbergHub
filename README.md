@@ -115,7 +115,7 @@ local function getSpeed()
 end
 
 --------------------------------------------------
--- Очистка мира (используется только в Autofarm)
+-- Очистка мира (только для Autofarm)
 --------------------------------------------------
 
 local function hideWorkspaceObjects(plr)
@@ -239,7 +239,7 @@ local farmFrames = {
 }
 
 --------------------------------------------------
--- Race1 чекпоинты
+-- Race1 чекпоинты (как ты скинул)
 --------------------------------------------------
 
 local race1Frames = {
@@ -313,7 +313,7 @@ local autofarmRunning = false
 local race1Running   = false
 
 --------------------------------------------------
--- Автофарм (с очисткой мира)
+-- Автофарм (с очисткой мира, циклом)
 --------------------------------------------------
 
 local function runFarmRoute()
@@ -344,29 +344,29 @@ local function runFarmRoute()
 end
 
 --------------------------------------------------
--- Auto Race1 (без очистки мира)
+-- Auto Race1 (без очистки мира, один круг)
 --------------------------------------------------
 
 local function runRace1Route()
-    race1Running = true
     ensureGroundPart()
 
-    while race1Running do
-        local car = getCar()
-        if not car then
-            task.wait(0.5)
-        else
-            local speed = getSpeed()
-            for _, cf in ipairs(race1Frames) do
-                if not race1Running then break end
-                tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
-            end
-        end
+    local car = getCar()
+    if not car then
+        race1Running = false
+        return
+    end
+
+    local speed = getSpeed()
+
+    for _, cf in ipairs(race1Frames) do
+        if not race1Running then break end
+        tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
     end
 
     if currentTween then
         currentTween:Cancel()
     end
+    race1Running = false
 end
 
 --------------------------------------------------
@@ -398,6 +398,7 @@ race1Btn.Parent = mainFrame
 autofarmBtn.MouseButton1Click:Connect(function()
     if race1Running then return end
     if not autofarmRunning then
+        autofarmRunning = true
         autofarmBtn.Text = "Stop Autofarm"
         task.spawn(function()
             runFarmRoute()
@@ -412,10 +413,10 @@ end)
 race1Btn.MouseButton1Click:Connect(function()
     if autofarmRunning then return end
     if not race1Running then
+        race1Running = true
         race1Btn.Text = "Stop Auto Race1"
         task.spawn(function()
             runRace1Route()
-            race1Running = false
             race1Btn.Text = "Start Auto Race1"
         end)
     else
