@@ -1,9 +1,9 @@
--- Midnight Chasers Autofarm GUI (маршрут + максимально пустой мир)
+-- Midnight Chasers Autofarm GUI (маршрут + выборочная очистка мира)
 
-local Players        = game:GetService("Players")
-local UIS            = game:GetService("UserInputService")
-local Workspace      = game:GetService("Workspace")
-local TweenService   = game:GetService("TweenService")
+local Players           = game:GetService("Players")
+local UIS               = game:GetService("UserInputService")
+local Workspace         = game:GetService("Workspace")
+local TweenService      = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
@@ -115,7 +115,7 @@ local function getSpeed()
 end
 
 --------------------------------------------------
--- Скрытие/возврат всего, кроме твоей машины
+-- Скрытие/возврат объектов
 --------------------------------------------------
 
 local function hideWorkspaceObjects(plr)
@@ -126,10 +126,36 @@ local function hideWorkspaceObjects(plr)
     end
     local backup = ReplicatedStorage:FindFirstChild("mrbackupfolder")
 
+    local mustRemoveByName = {
+        Bush = true,
+        BeltPole = true,
+        Bridge = true,
+        BridgeAccent = true,
+        Curve = true,
+        GarageLamp = true,
+        Hangar = true,
+        HedgeTall = true,
+        MapBoard = true,
+        PortCraneOversized = true,
+        RailGuide = true
+    }
+
     for _, v in pairs(Workspace:GetChildren()) do
         local name = v.Name or ""
         local isPlayerCar = string.find(name, plr.Name) or string.find(name, plr.DisplayName)
 
+        -- Terrain всегда оставляем
+        if v == Workspace.Terrain then
+            continue
+        end
+
+        -- если это один из перечисленных типов окружения — точно убираем
+        if mustRemoveByName[name] then
+            v.Parent = backup
+            continue
+        end
+
+        -- всё остальное убираем, если это не твоя машина
         if (v:IsA("Model") or v:IsA("Folder") or v:IsA("MeshPart"))
             and not isPlayerCar
             and name ~= "" then
