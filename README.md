@@ -1,9 +1,10 @@
--- Midnight Chasers Autofarm GUI (маршрут + очистка мира)
+-- Midnight Chasers Autofarm GUI (маршрут + максимально пустой мир)
 
-local Players   = game:GetService("Players")
-local UIS       = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
+local Players        = game:GetService("Players")
+local UIS            = game:GetService("UserInputService")
+local Workspace      = game:GetService("Workspace")
+local TweenService   = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
@@ -114,38 +115,34 @@ local function getSpeed()
 end
 
 --------------------------------------------------
--- Скрытие/возврат препятствий
+-- Скрытие/возврат всего, кроме твоей машины
 --------------------------------------------------
 
 local function hideWorkspaceObjects(plr)
-    if not game.ReplicatedStorage:FindFirstChild("mrbackupfolder") then
-        local folder = Instance.new("Folder", game.ReplicatedStorage)
+    if not ReplicatedStorage:FindFirstChild("mrbackupfolder") then
+        local folder = Instance.new("Folder")
         folder.Name = "mrbackupfolder"
+        folder.Parent = ReplicatedStorage
     end
-    local backup = game.ReplicatedStorage:FindFirstChild("mrbackupfolder")
+    local backup = ReplicatedStorage:FindFirstChild("mrbackupfolder")
 
-    for _, v in pairs(workspace:GetChildren()) do
-        if (
-            v.ClassName == "Model"
-            and not string.find(v.Name, plr.Name)
-            and not string.find(v.Name, plr.DisplayName)
-            and v.Name ~= ""
-        ) or (
-            v.ClassName == "Folder"
-            and not string.find(v.Name, plr.Name)
-            and not string.find(v.Name, plr.DisplayName)
-            and v.Name ~= ""
-        ) or v:IsA("MeshPart") then
+    for _, v in pairs(Workspace:GetChildren()) do
+        local name = v.Name or ""
+        local isPlayerCar = string.find(name, plr.Name) or string.find(name, plr.DisplayName)
+
+        if (v:IsA("Model") or v:IsA("Folder") or v:IsA("MeshPart"))
+            and not isPlayerCar
+            and name ~= "" then
             v.Parent = backup
         end
     end
 end
 
 local function restoreWorkspaceObjects()
-    local backup = game.ReplicatedStorage:FindFirstChild("mrbackupfolder")
+    local backup = ReplicatedStorage:FindFirstChild("mrbackupfolder")
     if backup then
         for _, v in pairs(backup:GetChildren()) do
-            v.Parent = workspace
+            v.Parent = Workspace
             task.wait()
         end
     end
