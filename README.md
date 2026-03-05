@@ -1,7 +1,6 @@
--- Midnight Chasers GUI (debug + autofarm)
+-- Midnight Chasers GUI (DriveSeat control)
 
 local Players      = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local UIS          = game:GetService("UserInputService")
 local Workspace    = game:GetService("Workspace")
 
@@ -78,7 +77,7 @@ removeBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------
--- Ввод скорости (TextBox)
+-- Ввод «скорости» (по сути сила газа)
 --------------------------------------------------
 
 local speedLabel = Instance.new("TextLabel")
@@ -86,7 +85,7 @@ speedLabel.Size = UDim2.new(1, -20, 0, 20)
 speedLabel.Position = UDim2.new(0, 10, 0, 80)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.GothamBold
-speedLabel.Text = "Speed:"
+speedLabel.Text = "Throttle (0–1):"
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.TextSize = 14
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -99,36 +98,30 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "Введите скорость, напр. 100"
-speedBox.Text = "100"
+speedBox.PlaceholderText = "например 1 или 0.7"
+speedBox.Text = "1"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
 speedBox.ClearTextOnFocus = false
 speedBox.Parent = mainFrame
 
-local speed = 100
-
-speedBox:GetPropertyChangedSignal("Text"):Connect(function()
-    local onlyNums = speedBox.Text:gsub("%D", "")
-    if onlyNums == "" then
-        speedBox.Text = ""
-    else
-        speedBox.Text = onlyNums
-    end
-end)
+local throttleValue = 1
 
 speedBox.FocusLost:Connect(function(enterPressed)
     if not enterPressed then return end
     local value = tonumber(speedBox.Text)
-    if value and value > 0 then
-        speed = value
+    if value then
+        value = math.clamp(value, -1, 1)
+        throttleValue = value
+        speedBox.Text = tostring(value)
     else
-        speedBox.Text = tostring(speed)
+        speedBox.Text = tostring(throttleValue)
     end
 end)
 
 --------------------------------------------------
--- Autofarm (debug‑версия)
+-- Autofarm через DriveSeat
+-- W – Throttle = 1, S – Throttle = -1, A/D – Steer, Space – тормоз [web:64][web:70]
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
@@ -143,12 +136,10 @@ autofarmBtn.TextSize = 16
 autofarmBtn.Parent = mainFrame
 
 local running = false
-local tween
+local driveSeat
 
--- Workspace
---   bonitoscocos (Model)
---     bonitoscocos's Car (Model)
-local function getPlayerCar()
+-- Находим DriveSeat внутри машины игрока
+local function getDriveSeat()
     local playerModel = Workspace:FindFirstChild(LocalPlayer.Name)
     if not playerModel then
         warn("player model not found in Workspace: " .. LocalPlayer.Name)
@@ -157,84 +148,47 @@ local function getPlayerCar()
 
     local carName = LocalPlayer.Name .. "'s Car"
     local car = playerModel:FindFirstChild(carName)
-    if not car then
-        warn("car model not found inside player model: " .. carName)
+    if not car or not car:IsA("Model") then
+        warn("car model not found: " .. carName)
         return nil
     end
-    if not car:IsA("Model") then
-        warn("found object is not a Model")
+
+    local seat = car:FindFirstChild("DriveSeat", true)
+    if not seat or not seat:IsA("VehicleSeat") then
+        warn("DriveSeat not found in car")
         return nil
     end
-    return car
+    return seat
 end
 
-local function ensurePrimaryPart(car)
-    if not car.PrimaryPart then
-        local seat = car:FindFirstChild("DriveSeat", true)
-        if seat and seat:IsA("BasePart") then
-            car.PrimaryPart = seat
-        end
-    end
-    return car.PrimaryPart
-end
-
--- Для теста двигаем машину недалеко
-local function getTestPoints(primary)
-    local startPos = primary.Position
-    local finishPos = startPos + Vector3.new(0, 0, 100)
-    return startPos, finishPos
-end
+-- Простой паттерн: газ вперёд и лёгкий поворот,
+-- чтобы машина ехала по кругу/трассе, пока не выключишь
+local steerDirection = 0 -- 0 = прямо; >0 вправо; <0 влево
 
 local function startAutofarm()
     if running then return end
     running = true
     autofarmBtn.Text = "Stop Autofarm"
 
-    local car = getPlayerCar()
-    if not car then
+    driveSeat = getDriveSeat()
+    if not driveSeat then
         running = false
         autofarmBtn.Text = "Start Autofarm"
         return
     end
 
-    local primary = ensurePrimaryPart(car)
-    if not primary then
-        warn("PrimaryPart not set even after ensurePrimaryPart")
-        running = false
-        autofarmBtn.Text = "Start Autofarm"
-        return
-    end
-
-    for _, p in ipairs(car:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.Anchored = true
-        end
-    end
-
-    local pointA, pointB = getTestPoints(primary)
-
-    car:PivotTo(CFrame.new(pointA))  -- стартовая позиция
-
-    local dist = (pointA - pointB).Magnitude
-    local time = dist / math.max(speed, 1)
-
-    local info = TweenInfo.new(
-        time,
-        Enum.EasingStyle.Linear,
-        Enum.EasingDirection.InOut,
-        -1,
-        true,
-        0
-    )
-
-    tween = TweenService:Create(primary, info, {CFrame = CFrame.new(pointB)})
-    tween:Play()
+    -- Включаем «газ»
+    driveSeat.ThrottleFloat = throttleValue   -- аналог постоянного зажатого W [web:62][web:66]
+    driveSeat.SteerFloat    = steerDirection  -- можно поменять знак, если трасса в другую сторону
 end
 
 local function stopAutofarm()
     running = false
     autofarmBtn.Text = "Start Autofarm"
-    if tween then tween:Cancel() end
+    if driveSeat then
+        driveSeat.ThrottleFloat = 0
+        driveSeat.SteerFloat    = 0
+    end
 end
 
 autofarmBtn.MouseButton1Click:Connect(function()
