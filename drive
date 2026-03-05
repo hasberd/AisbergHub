@@ -1,0 +1,1266 @@
+-- Decompiled with Konstant V2.1, a fast Luau decompiler made in Luau by plusgiant5 (https://discord.gg/brNTY8nX8t)
+-- Decompiled on 2026-03-05 13:40:44
+-- Luau version 6, Types version 3
+-- Time taken: 0.068905 seconds
+
+-- KONSTANTWARNING: Variable analysis failed. Output will have some incorrect variable assignments
+script.Parent:WaitForChild("Car")
+script.Parent:WaitForChild("IsOn")
+script.Parent:WaitForChild("ControlsOpen")
+script.Parent:WaitForChild("Values")
+local UserInputService_upvr = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Value_upvr = script.Parent.Car.Value
+local A-Chassis Tune_upvr = require(Value_upvr["A-Chassis Tune"])
+local var21_upvw = A-Chassis Tune_upvr
+local VehicleInput_upvr = require(ReplicatedStorage.Modules.Modules.VehicleInput)
+local Network_upvr = require(ReplicatedStorage.Modules.Modules.Network)
+local Platform_upvr = require(ReplicatedStorage.Modules.Modules.Platform)
+local var25_upvw = var21_upvw.BrakeForce * var21_upvw.BrakeBias
+local var26_upvw = var21_upvw.BrakeForce * (1 - var21_upvw.BrakeBias)
+local var27_upvw = var21_upvw.PBrakeForce * var21_upvw.PBrakeBias
+local var28_upvw = var21_upvw.PBrakeForce * (1 - var21_upvw.PBrakeBias)
+local EBrakeForce_upvw = var21_upvw.EBrakeForce
+local SteerOuter_upvw = var21_upvw.SteerOuter
+local SteerInner_upvw = var21_upvw.SteerInner
+local RSteerOuter_upvw = var21_upvw.RSteerOuter
+local RSteerInner_upvw = var21_upvw.RSteerInner
+local var140
+if not workspace:PGSIsEnabled() then
+	error("PGS is not enabled: A-Chassis will not work.")
+end
+local AutoStart_upvw = var21_upvw.AutoStart
+local var36_upvw
+if var21_upvw.AutoStart and (var21_upvw.Engine or var21_upvw.Electric) then
+	script.Parent.IsOn.Value = true
+end
+local var37_upvw = 0
+local var38_upvw = 0
+local var39_upvw = 0
+local var40_upvw = 0
+local var41_upvw = var21_upvw.IdleThrottle / 100
+local var42_upvw = 0
+local var43_upvw = 0
+local var44_upvw = 0
+local var45_upvw = false
+local var46_upvw = false
+local var47_upvw = 0
+local var48_upvw = 0
+local var49_upvw = 0
+local var50_upvw = 0
+local var51_upvw = false
+local var52_upvw = false
+local var53_upvw = false
+local var54_upvw = 0
+local var55_upvw = 0
+local var56_upvw = 0
+local var57_upvw = 0
+local var58_upvw = 0
+local var59_upvw = 0
+local var60_upvw = 0
+local var61_upvw = 0
+local var62_upvw = 0
+local var63_upvw = 0
+local var64_upvw = 0
+local var65_upvw = 0
+local var66_upvw = 0
+local var67_upvw = 0
+local var68_upvw = 0
+local tbl_upvr = {var21_upvw.TransModes[1], "Semi", "Manual"}
+local _1_upvw = tbl_upvr[1]
+local var71_upvw = false
+local var72_upvw = false
+local var73_upvw = false
+if Value_upvr:GetAttribute("PBrake") ~= true then
+	var36_upvw = false
+else
+	var36_upvw = true
+end
+local TCSEnabled_upvw = var21_upvw.TCSEnabled
+local var75_upvw = false
+local var76_upvw = 0
+local ABSEnabled_upvw = var21_upvw.ABSEnabled
+local var78_upvw = false
+local var79_upvw = false
+local var80_upvw = false
+local tbl_upvw_3 = {}
+local var82_upvw = 0
+local var83_upvw = 0
+local var84_upvw = 0
+local var85_upvw = 0
+local tbl_upvw = {}
+local tbl_upvw_2 = {}
+local tbl_upvw_4 = {}
+local tbl_upvw_5 = {}
+local BindableEvent_upvr = Instance.new("BindableEvent")
+BindableEvent_upvr.Name = "TuneUpdatedEvent"
+BindableEvent_upvr.Parent = Value_upvr
+local BindableEvent_upvr_2 = Instance.new("BindableEvent")
+BindableEvent_upvr_2.Name = "DriveEvent"
+BindableEvent_upvr_2.Parent = Value_upvr
+local var92_upvw
+local var93_upvw = 0
+local PowerCurve_upvr = require(script.PowerCurve)
+local function UpdateTune(arg1, arg2) -- Line 138
+	--[[ Upvalues[28]:
+		[1]: var92_upvw (read and write)
+		[2]: var21_upvw (read and write)
+		[3]: var54_upvw (read and write)
+		[4]: var55_upvw (read and write)
+		[5]: var57_upvw (read and write)
+		[6]: var58_upvw (read and write)
+		[7]: tbl_upvw_3 (read and write)
+		[8]: Value_upvr (readonly)
+		[9]: var93_upvw (read and write)
+		[10]: var82_upvw (read and write)
+		[11]: SteerOuter_upvw (read and write)
+		[12]: SteerInner_upvw (read and write)
+		[13]: RSteerOuter_upvw (read and write)
+		[14]: RSteerInner_upvw (read and write)
+		[15]: var83_upvw (read and write)
+		[16]: var84_upvw (read and write)
+		[17]: var85_upvw (read and write)
+		[18]: PowerCurve_upvr (readonly)
+		[19]: tbl_upvw (read and write)
+		[20]: tbl_upvw_2 (read and write)
+		[21]: tbl_upvw_4 (read and write)
+		[22]: tbl_upvw_5 (read and write)
+		[23]: var25_upvw (read and write)
+		[24]: var26_upvw (read and write)
+		[25]: var27_upvw (read and write)
+		[26]: var28_upvw (read and write)
+		[27]: EBrakeForce_upvw (read and write)
+		[28]: BindableEvent_upvr (readonly)
+	]]
+	if arg2 then
+		var92_upvw = arg2
+	end
+	if not arg1 then
+	else
+		if not arg1.Engine and arg1.Electric then
+			arg1.Redline = arg1.E_Redline
+			arg1.PeakRPM = arg1.E_Trans2
+			arg1.Turbochargers = 0
+			arg1.Superchargers = 0
+			arg1.Clutch = false
+			arg1.IdleRPM = 0
+			arg1.ClutchType = "Clutch"
+			arg1.AutoShiftType = "DCT"
+			arg1.ShiftUpTime = 0.1
+			arg1.ShiftDnTime = 0.1
+		end
+		var21_upvw = arg1
+		var54_upvw = arg1.Turbochargers
+		var55_upvw = arg1.T_Boost * arg1.Turbochargers
+		var57_upvw = arg1.Superchargers
+		var58_upvw = arg1.S_Boost * arg1.Superchargers
+		for _, v_7 in tbl_upvw_3 do
+			local #AV = v_7:FindFirstChild("#AV")
+			if #AV then
+				#AV.MotorMaxTorque = 0
+				#AV.AngularVelocity = 0
+			end
+		end
+		local Wheels_2 = Value_upvr:FindFirstChild("Wheels")
+		if Wheels_2 then
+			if arg1.Config == "FWD" or arg1.Config == "AWD" then
+				for _, v_8 in Wheels_2:GetChildren() do
+					if v_8.Name == "FL" or v_8.Name == "FR" or v_8.Name == 'F' then
+						table.insert({}, v_8)
+					end
+				end
+			end
+			if arg1.Config == "RWD" or arg1.Config == "AWD" then
+				for _, v_9 in Wheels_2:GetChildren() do
+					if v_9.Name == "RL" or v_9.Name == "RR" or v_9.Name == 'R' then
+						-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+						table.insert({}, v_9)
+					end
+				end
+			end
+			-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+			tbl_upvw_3 = {}
+		end
+		var93_upvw = 0
+		for _, v_10 in tbl_upvw_3 do
+			if var93_upvw < v_10.Size.x then
+				-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+				var93_upvw = v_10.Size.x
+			end
+		end
+		var82_upvw = var93_upvw * math.pi / 60
+		if arg1.SteeringType == "New" then
+			SteerOuter_upvw = arg1.LockToLock * 180 / arg1.SteerRatio
+			SteerInner_upvw = math.min(SteerOuter_upvw - SteerOuter_upvw * (1 - arg1.Ackerman), SteerOuter_upvw * 1.2)
+		else
+			SteerOuter_upvw = var21_upvw.SteerOuter
+			SteerInner_upvw = var21_upvw.SteerInner
+		end
+		RSteerOuter_upvw = arg1.RSteerOuter
+		RSteerInner_upvw = arg1.RSteerInner
+		var83_upvw = arg1.FinalDrive * arg1.FDMult
+		var84_upvw = var83_upvw * 30 / math.pi
+		var85_upvw = workspace.Gravity * arg1.InclineComp / 32.2
+		local PowerCurve_upvr_result1 = PowerCurve_upvr(arg1)
+		tbl_upvw = PowerCurve_upvr_result1.NCache
+		tbl_upvw_2 = PowerCurve_upvr_result1.ECache
+		tbl_upvw_4 = PowerCurve_upvr_result1.TCache
+		tbl_upvw_5 = PowerCurve_upvr_result1.SCache
+		var25_upvw = arg1.BrakeForce * arg1.BrakeBias
+		var26_upvw = arg1.BrakeForce * (1 - arg1.BrakeBias)
+		var27_upvw = arg1.PBrakeForce * arg1.PBrakeBias
+		var28_upvw = arg1.PBrakeForce * (1 - arg1.PBrakeBias)
+		EBrakeForce_upvw = arg1.EBrakeForce
+		BindableEvent_upvr:Fire(arg1)
+	end
+end
+UpdateTune(A-Chassis Tune_upvr)
+Value_upvr:WaitForChild("UpdateTune").OnClientEvent:Connect(UpdateTune)
+BindableEvent_upvr_2.Event:Connect(function(arg1, ...) -- Line 241
+	--[[ Upvalues[4]:
+		[1]: var21_upvw (read and write)
+		[2]: TCSEnabled_upvw (read and write)
+		[3]: ABSEnabled_upvw (read and write)
+		[4]: var79_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [7] 6. Error Block 3 start (CF ANALYSIS FAILED)
+	TCSEnabled_upvw = not TCSEnabled_upvw
+	do
+		return
+	end
+	-- KONSTANTERROR: [7] 6. Error Block 3 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [11] 10. Error Block 4 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [11] 10. Error Block 4 end (CF ANALYSIS FAILED)
+end)
+Value_upvr:WaitForChild("DriveSeat", math.huge).ChildRemoved:connect(function(arg1) -- Line 257
+	--[[ Upvalues[5]:
+		[1]: VehicleInput_upvr (readonly)
+		[2]: Value_upvr (readonly)
+		[3]: BindableEvent_upvr (readonly)
+		[4]: BindableEvent_upvr_2 (readonly)
+		[5]: Network_upvr (readonly)
+	]]
+	if arg1.Name == "SeatWeld" and arg1:IsA("Weld") then
+		VehicleInput_upvr.UnbindByVehicle(Value_upvr)
+		BindableEvent_upvr:Destroy()
+		BindableEvent_upvr_2:Destroy()
+		local Wheels = Value_upvr:FindFirstChild("Wheels")
+		if Wheels then
+			for _, v in Wheels:GetChildren() do
+				local var123 = v:FindFirstChild("Arm")
+				if var123 then
+					var123 = v:FindFirstChild("Arm"):FindFirstChild("Steer")
+				end
+				if var123 then
+					table.insert({}, {var123, var123.CFrame})
+				end
+			end
+			-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+			Network_upvr.FireServer("OrientWheels", Value_upvr, {})
+		end
+		script.Parent:Destroy()
+	end
+end)
+Value_upvr.AncestryChanged:Connect(function(arg1, arg2) -- Line 286
+	--[[ Upvalues[4]:
+		[1]: VehicleInput_upvr (readonly)
+		[2]: Value_upvr (readonly)
+		[3]: BindableEvent_upvr (readonly)
+		[4]: BindableEvent_upvr_2 (readonly)
+	]]
+	if not arg2 then
+		VehicleInput_upvr.UnbindByVehicle(Value_upvr)
+		BindableEvent_upvr:Destroy()
+		BindableEvent_upvr_2:Destroy()
+		script.Parent:Destroy()
+	end
+end)
+VehicleInput_upvr.BindInput(VehicleInput_upvr.Keybinds.Exit, Value_upvr, function(arg1) -- Line 297
+	--[[ Upvalues[1]:
+		[1]: Network_upvr (readonly)
+	]]
+	if arg1 then
+		Network_upvr.FireServer("ExitVehicle")
+	end
+end)
+VehicleInput_upvr.BindInput(VehicleInput_upvr.Keybinds.PBrake, Value_upvr, function(arg1) -- Line 303
+	--[[ Upvalues[2]:
+		[1]: var36_upvw (read and write)
+		[2]: Value_upvr (readonly)
+	]]
+	if arg1 then
+		var36_upvw = not var36_upvw
+	elseif 5 < Value_upvr.DriveSeat.Velocity.Magnitude then
+		var36_upvw = false
+	end
+end)
+local var128_upvw
+local var129_upvw
+local var130_upvw
+local any_BindInput_result1 = VehicleInput_upvr.BindInput(VehicleInput_upvr.Keybinds.TransMode, Value_upvr, function(arg1) -- Line 315
+	--[[ Upvalues[6]:
+		[1]: tbl_upvr (readonly)
+		[2]: _1_upvw (read and write)
+		[3]: Platform_upvr (readonly)
+		[4]: var128_upvw (read and write)
+		[5]: var129_upvw (read and write)
+		[6]: var130_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [82] 63. Error Block 27 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [82] 63. Error Block 27 end (CF ANALYSIS FAILED)
+end)
+require(ReplicatedStorage.Modules.Client.VehicleLights).GetVehicleMaid(script.Parent):GiveTask(Platform_upvr.PlatformChanged:Connect(function(arg1) -- Line 332
+	--[[ Upvalues[6]:
+		[1]: Platform_upvr (readonly)
+		[2]: _1_upvw (read and write)
+		[3]: tbl_upvr (readonly)
+		[4]: var128_upvw (read and write)
+		[5]: var129_upvw (read and write)
+		[6]: var130_upvw (read and write)
+	]]
+	if arg1 ~= Platform_upvr.Platforms.Keyboard then
+		local var135
+		if _1_upvw == "Manual" then
+			_1_upvw = tbl_upvr[1]
+			var135 = true
+			if _1_upvw ~= "Semi" then
+				if _1_upvw ~= "Manual" then
+					var135 = false
+				else
+					var135 = true
+				end
+			end
+			var128_upvw.Button:SetAttribute("Visible", var135)
+			if _1_upvw ~= "Semi" then
+				if _1_upvw ~= "Manual" then
+				else
+				end
+			end
+			var129_upvw.Button:SetAttribute("Visible", true)
+			if _1_upvw ~= "Manual" then
+			else
+			end
+			var130_upvw.Button:SetAttribute("Visible", true)
+		end
+	end
+end))
+function var140(arg1) -- Line 341
+	--[[ Upvalues[1]:
+		[1]: var52_upvw (read and write)
+	]]
+	if arg1 and not var52_upvw then
+		var52_upvw = true
+	end
+end
+var128_upvw = VehicleInput_upvr.BindInput(VehicleInput_upvr.Keybinds.ShiftDown, Value_upvr, var140, function() -- Line 345
+	--[[ Upvalues[4]:
+		[1]: AutoStart_upvw (read and write)
+		[2]: var21_upvw (read and write)
+		[3]: _1_upvw (read and write)
+		[4]: var50_upvw (read and write)
+	]]
+	if not AutoStart_upvw or var21_upvw.AutoShiftVers == "New" and _1_upvw == "Auto" and 1 < var50_upvw or var21_upvw.AutoShiftVers ~= "New" and _1_upvw == "Auto" then
+		return true
+	end
+	return false
+end, any_BindInput_result1)
+function var140(arg1) -- Line 353
+	--[[ Upvalues[1]:
+		[1]: var51_upvw (read and write)
+	]]
+	if arg1 and not var51_upvw then
+		var51_upvw = true
+	end
+end
+var129_upvw = VehicleInput_upvr.BindInput(VehicleInput_upvr.Keybinds.ShiftUp, Value_upvr, var140, function() -- Line 357
+	--[[ Upvalues[4]:
+		[1]: AutoStart_upvw (read and write)
+		[2]: var21_upvw (read and write)
+		[3]: _1_upvw (read and write)
+		[4]: var50_upvw (read and write)
+	]]
+	if not AutoStart_upvw or var21_upvw.AutoShiftVers == "New" and _1_upvw == "Auto" and 1 < var50_upvw or var21_upvw.AutoShiftVers ~= "New" and _1_upvw == "Auto" then
+		return true
+	end
+	return false
+end, any_BindInput_result1)
+function var140(arg1) -- Line 365
+	--[[ Upvalues[2]:
+		[1]: var45_upvw (read and write)
+		[2]: var46_upvw (read and write)
+	]]
+	var45_upvw = arg1
+	var46_upvw = arg1
+end
+var130_upvw = VehicleInput_upvr.BindInput(VehicleInput_upvr.Keybinds.Clutch, Value_upvr, var140, function() -- Line 368
+	--[[ Upvalues[2]:
+		[1]: var46_upvw (read and write)
+		[2]: _1_upvw (read and write)
+	]]
+	local var142
+	if var142 then
+		var142 = false
+		return var142
+	end
+	if _1_upvw == "Manual" then
+		var142 = false
+	else
+		var142 = true
+	end
+	return var142
+end, any_BindInput_result1)
+var140 = true
+if _1_upvw ~= "Semi" then
+	if _1_upvw ~= "Manual" then
+		var140 = false
+	else
+		var140 = true
+	end
+end
+var128_upvw.Button:SetAttribute("Visible", var140)
+var140 = true
+if _1_upvw ~= "Semi" then
+	if _1_upvw ~= "Manual" then
+		var140 = false
+	else
+		var140 = true
+	end
+end
+var129_upvw.Button:SetAttribute("Visible", var140)
+if _1_upvw ~= "Manual" then
+	var140 = false
+else
+	var140 = true
+end
+var130_upvw.Button:SetAttribute("Visible", var140)
+local Controls_upvr = A-Chassis Tune_upvr.Controls
+var140 = script.Parent
+local Folder = Instance.new("Folder", var140)
+Folder.Name = "Controls"
+var140 = Controls_upvr
+local pairs_result1, pairs_result2_5, pairs_result3_4 = pairs(var140)
+for i_2_upvr, v_2 in pairs_result1, pairs_result2_5, pairs_result3_4 do
+	local StringValue_upvr = Instance.new("StringValue", Folder)
+	StringValue_upvr.Name = i_2_upvr
+	StringValue_upvr.Value = v_2.Name
+	StringValue_upvr.Changed:connect(function() -- Line 387
+		--[[ Upvalues[3]:
+			[1]: i_2_upvr (readonly)
+			[2]: StringValue_upvr (readonly)
+			[3]: Controls_upvr (readonly)
+		]]
+		if i_2_upvr == "MouseThrottle" or i_2_upvr == "MouseBrake" then
+			if StringValue_upvr.Value == "MouseButton1" or StringValue_upvr.Value == "MouseButton2" then
+				Controls_upvr[i_2_upvr] = Enum.UserInputType[StringValue_upvr.Value]
+			else
+				Controls_upvr[i_2_upvr] = Enum.KeyCode[StringValue_upvr.Value]
+			end
+		end
+		Controls_upvr[i_2_upvr] = Enum.KeyCode[StringValue_upvr.Value]
+	end)
+	local var150
+end
+local Peripherals_upvr = A-Chassis Tune_upvr.Peripherals
+pairs_result2_5 = pairs(Peripherals_upvr)
+local pairs_result1_4_upvr, pairs_result2, pairs_result3_3 = pairs(Peripherals_upvr)
+for i_3_upvr, v_3 in pairs_result1_4_upvr, pairs_result2, pairs_result3_3 do
+	local IntValue_upvr = Instance.new("IntValue", var150)
+	IntValue_upvr.Name = i_3_upvr
+	IntValue_upvr.Value = v_3
+	IntValue_upvr.Changed:connect(function() -- Line 406
+		--[[ Upvalues[3]:
+			[1]: IntValue_upvr (readonly)
+			[2]: Peripherals_upvr (readonly)
+			[3]: i_3_upvr (readonly)
+		]]
+		IntValue_upvr.Value = math.min(100, math.max(0, IntValue_upvr.Value))
+		Peripherals_upvr[i_3_upvr] = IntValue_upvr.Value
+	end)
+	local _
+end
+function pairs_result1_4_upvr(arg1, arg2) -- Line 413, Named "DealWithInput"
+	--[[ Upvalues[23]:
+		[1]: var80_upvw (read and write)
+		[2]: var79_upvw (read and write)
+		[3]: UserInputService_upvr (readonly)
+		[4]: var41_upvw (read and write)
+		[5]: var21_upvw (read and write)
+		[6]: var37_upvw (read and write)
+		[7]: var44_upvw (read and write)
+		[8]: var73_upvw (read and write)
+		[9]: var72_upvw (read and write)
+		[10]: var71_upvw (read and write)
+		[11]: Controls_upvr (readonly)
+		[12]: AutoStart_upvw (read and write)
+		[13]: _1_upvw (read and write)
+		[14]: var50_upvw (read and write)
+		[15]: var52_upvw (read and write)
+		[16]: var51_upvw (read and write)
+		[17]: var45_upvw (read and write)
+		[18]: var46_upvw (read and write)
+		[19]: var36_upvw (read and write)
+		[20]: Value_upvr (readonly)
+		[21]: TCSEnabled_upvw (read and write)
+		[22]: ABSEnabled_upvw (read and write)
+		[23]: A-Chassis Tune_upvr (readonly)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [6] 4. Error Block 2 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [6] 4. Error Block 2 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [7] 5. Error Block 199 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [7] 5. Error Block 199 end (CF ANALYSIS FAILED)
+end
+DealWithInput = pairs_result1_4_upvr -- Setting global
+pairs_result1_4_upvr = UserInputService_upvr.InputBegan:connect
+pairs_result1_4_upvr(DealWithInput)
+pairs_result1_4_upvr = UserInputService_upvr.InputChanged:connect
+pairs_result1_4_upvr(DealWithInput)
+pairs_result1_4_upvr = UserInputService_upvr.InputEnded:connect
+pairs_result1_4_upvr(DealWithInput)
+pairs_result1_4_upvr = script.Parent:WaitForChild("AC6C_Stock_Gauges"):WaitForChild("Mobile")
+local DriveButtons_upvr = pairs_result1_4_upvr:WaitForChild("DriveButtons")
+IntValue_upvr = "Downshift"
+local Gas = DriveButtons_upvr:WaitForChild("Gas")
+IntValue_upvr = DriveButtons_upvr:WaitForChild("Brake")
+local var160_upvw = IntValue_upvr
+local PBrake = DriveButtons_upvr:WaitForChild("PBrake")
+local Steering_3 = pairs_result1_4_upvr:WaitForChild("Steering")
+local Left = Steering_3:WaitForChild("Left")
+local Right = Steering_3:WaitForChild("Right")
+local function LeftTurn(arg1, arg2) -- Line 578
+	--[[ Upvalues[3]:
+		[1]: var37_upvw (read and write)
+		[2]: var72_upvw (read and write)
+		[3]: var73_upvw (read and write)
+	]]
+	if arg1.UserInputState == Enum.UserInputState.Begin then
+		var37_upvw = -1
+		var72_upvw = true
+	else
+		if var73_upvw then
+			var37_upvw = 1
+		else
+			var37_upvw = 0
+		end
+		var72_upvw = false
+	end
+end
+Left.InputBegan:Connect(LeftTurn)
+Left.InputEnded:Connect(LeftTurn)
+local function RightTurn(arg1, arg2) -- Line 594
+	--[[ Upvalues[3]:
+		[1]: var37_upvw (read and write)
+		[2]: var73_upvw (read and write)
+		[3]: var72_upvw (read and write)
+	]]
+	if arg1.UserInputState == Enum.UserInputState.Begin then
+		var37_upvw = 1
+		var73_upvw = true
+	else
+		if var72_upvw then
+			var37_upvw = -1
+		else
+			var37_upvw = 0
+		end
+		var73_upvw = false
+	end
+end
+Right.InputBegan:Connect(RightTurn)
+Right.InputEnded:Connect(RightTurn)
+local var165_upvw = false
+local function TouchThrottle(arg1, arg2) -- Line 611
+	--[[ Upvalues[4]:
+		[1]: AutoStart_upvw (read and write)
+		[2]: var41_upvw (read and write)
+		[3]: var165_upvw (read and write)
+		[4]: var21_upvw (read and write)
+	]]
+	if arg1.UserInputState == Enum.UserInputState.Begin and AutoStart_upvw then
+		var41_upvw = 1
+		var165_upvw = true
+	else
+		var41_upvw = var21_upvw.IdleThrottle / 100
+		var165_upvw = false
+	end
+end
+Gas.InputBegan:Connect(TouchThrottle)
+Gas.InputEnded:Connect(TouchThrottle)
+local var166_upvw = false
+local function TouchBrake(arg1, arg2) -- Line 624
+	--[[ Upvalues[2]:
+		[1]: var44_upvw (read and write)
+		[2]: var166_upvw (read and write)
+	]]
+	if arg1.UserInputState == Enum.UserInputState.Begin then
+		var44_upvw = 1
+		var166_upvw = true
+	else
+		var44_upvw = 0
+		var166_upvw = false
+	end
+end
+var160_upvw.InputBegan:Connect(TouchBrake)
+var160_upvw.InputEnded:Connect(TouchBrake)
+DriveButtons_upvr:GetPropertyChangedSignal("Visible"):Connect(function() -- Line 636
+	--[[ Upvalues[6]:
+		[1]: DriveButtons_upvr (readonly)
+		[2]: var165_upvw (read and write)
+		[3]: var41_upvw (read and write)
+		[4]: var21_upvw (read and write)
+		[5]: var166_upvw (read and write)
+		[6]: var44_upvw (read and write)
+	]]
+	if DriveButtons_upvr.Visible then
+	else
+		if var165_upvw then
+			var165_upvw = false
+			var41_upvw = var21_upvw.IdleThrottle / 100
+		end
+		if var166_upvw then
+			var166_upvw = false
+			var44_upvw = 0
+		end
+	end
+end)
+local function TouchHandbrake(arg1, arg2) -- Line 652
+	--[[ Upvalues[2]:
+		[1]: var36_upvw (read and write)
+		[2]: Value_upvr (readonly)
+	]]
+	if arg1.UserInputState == Enum.UserInputState.Begin then
+		var36_upvw = not var36_upvw
+	elseif arg1.UserInputState == Enum.UserInputState.End and 5 < Value_upvr.DriveSeat.Velocity.Magnitude then
+		var36_upvw = false
+	end
+end
+PBrake.InputBegan:Connect(TouchHandbrake)
+PBrake.InputEnded:Connect(TouchHandbrake)
+DriveButtons_upvr:WaitForChild(IntValue_upvr).InputBegan:Connect(function(arg1, arg2) -- Line 664, Named "TouchDownshift"
+	--[[ Upvalues[5]:
+		[1]: AutoStart_upvw (read and write)
+		[2]: _1_upvw (read and write)
+		[3]: var50_upvw (read and write)
+		[4]: var21_upvw (read and write)
+		[5]: var52_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [2] 3. Error Block 2 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [2] 3. Error Block 2 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [14] 11. Error Block 15 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [14] 11. Error Block 15 end (CF ANALYSIS FAILED)
+end)
+DriveButtons_upvr:WaitForChild("Upshift").InputBegan:Connect(function(arg1, arg2) -- Line 674, Named "TouchUpshift"
+	--[[ Upvalues[5]:
+		[1]: AutoStart_upvw (read and write)
+		[2]: _1_upvw (read and write)
+		[3]: var50_upvw (read and write)
+		[4]: var21_upvw (read and write)
+		[5]: var51_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [2] 3. Error Block 2 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [2] 3. Error Block 2 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [14] 11. Error Block 15 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [14] 11. Error Block 15 end (CF ANALYSIS FAILED)
+end)
+script.Parent:WaitForChild("MobileTopbar"):WaitForChild("Frame"):WaitForChild("Transmission").MouseButton1Down:Connect(function() -- Line 683
+	--[[ Upvalues[3]:
+		[1]: tbl_upvr (readonly)
+		[2]: _1_upvw (read and write)
+		[3]: Platform_upvr (readonly)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	local pairs_result1_2, pairs_result2_2, pairs_result3_5 = pairs(tbl_upvr)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [11] 10. Error Block 4 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [11] 10. Error Block 4 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [6] 6. Error Block 2 start (CF ANALYSIS FAILED)
+	-- KONSTANTWARNING: Failed to evaluate expression, replaced with nil [11.5]
+	-- KONSTANTERROR: [6] 6. Error Block 2 end (CF ANALYSIS FAILED)
+end)
+DriveButtons_upvr = script
+pairs_result1_4_upvr = DriveButtons_upvr.Parent:WaitForChild("AC6C_Stock_Gauges")
+DriveButtons_upvr = pairs_result1_4_upvr:WaitForChild("Gauge"):WaitForChild("TCS")
+var160_upvw = "Gauge"
+var160_upvw = "PBrake"
+DriveButtons_upvr.Activated:Connect(function() -- Line 704
+	--[[ Upvalues[1]:
+		[1]: TCSEnabled_upvw (read and write)
+	]]
+	TCSEnabled_upvw = not TCSEnabled_upvw
+end)
+pairs_result1_4_upvr:WaitForChild("Gauge"):WaitForChild("ABS").Activated:Connect(function() -- Line 708
+	--[[ Upvalues[1]:
+		[1]: ABSEnabled_upvw (read and write)
+	]]
+	ABSEnabled_upvw = not ABSEnabled_upvw
+end)
+pairs_result1_4_upvr:WaitForChild(var160_upvw):WaitForChild(var160_upvw).Activated:Connect(function() -- Line 712
+	--[[ Upvalues[1]:
+		[1]: var36_upvw (read and write)
+	]]
+	var36_upvw = not var36_upvw
+end)
+function pairs_result1_4_upvr(arg1) -- Line 719, Named "Inputs"
+	--[[ Upvalues[5]:
+		[1]: var40_upvw (read and write)
+		[2]: var41_upvw (read and write)
+		[3]: var21_upvw (read and write)
+		[4]: var43_upvw (read and write)
+		[5]: var44_upvw (read and write)
+	]]
+	local var175 = (60) / (1 / arg1)
+	if var40_upvw <= var41_upvw then
+		var40_upvw = math.min(var41_upvw, var40_upvw + var21_upvw.ThrotAccel * var175)
+	else
+		var40_upvw = math.max(var41_upvw, var40_upvw - var21_upvw.ThrotDecel * var175)
+	end
+	if var43_upvw <= var44_upvw then
+		var43_upvw = math.min(var44_upvw, var43_upvw + var21_upvw.BrakeAccel * var175)
+	else
+		var43_upvw = math.max(var44_upvw, var43_upvw - var21_upvw.BrakeDecel * var175)
+	end
+end
+Inputs = pairs_result1_4_upvr -- Setting global
+local mouse_upvr = game.Players.LocalPlayer:GetMouse()
+function pairs_result1_4_upvr(arg1) -- Line 735, Named "Steering"
+	--[[ Upvalues[11]:
+		[1]: var71_upvw (read and write)
+		[2]: mouse_upvr (readonly)
+		[3]: A-Chassis Tune_upvr (readonly)
+		[4]: var37_upvw (read and write)
+		[5]: var21_upvw (read and write)
+		[6]: var38_upvw (read and write)
+		[7]: Value_upvr (readonly)
+		[8]: SteerOuter_upvw (read and write)
+		[9]: SteerInner_upvw (read and write)
+		[10]: RSteerInner_upvw (read and write)
+		[11]: RSteerOuter_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 134 start (CF ANALYSIS FAILED)
+	if var71_upvw then
+		local var177 = A-Chassis Tune_upvr.Peripherals.MSteerDZone / 100
+		local var178 = (mouse_upvr.X - mouse_upvr.ViewSizeX / 2) / math.max(1, mouse_upvr.ViewSizeX * A-Chassis Tune_upvr.Peripherals.MSteerWidth / 200)
+		if math.abs(var178) <= var177 then
+			var37_upvw = 0
+		else
+			var37_upvw = ((math.max(math.min(math.abs(var178) - var177, 1 - var177), 0) / (1 - var177)) ^ var21_upvw.MSteerExp) * (var178 / math.abs(var178))
+		end
+	end
+	if var38_upvw < var37_upvw then
+		if var38_upvw < 0 then
+			var38_upvw = math.min(var37_upvw, var38_upvw + (var21_upvw.ReturnSpeed) * ((60) / (1 / arg1)))
+		else
+			-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+			var38_upvw = math.min(var37_upvw, var38_upvw + (var21_upvw.SteerSpeed) * ((60) / (1 / arg1)))
+		end
+	elseif 0 < var38_upvw then
+		-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+		var38_upvw = math.max(var37_upvw, var38_upvw - (var21_upvw.ReturnSpeed) * ((60) / (1 / arg1)))
+	else
+		-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+		var38_upvw = math.max(var37_upvw, var38_upvw - (var21_upvw.SteerSpeed) * ((60) / (1 / arg1)))
+	end
+	local _ = var21_upvw.MinSteer
+	local pairs_result1_3, pairs_result2_7, pairs_result3_7 = pairs(Value_upvr.Wheels:GetChildren())
+	-- KONSTANTERROR: [0] 1. Error Block 134 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [1208] 844. Error Block 88 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [1208] 844. Error Block 88 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [198] 149. Error Block 147 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+	if var21_upvw == 'F' then
+	else
+		-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+		if var21_upvw == "FL" then
+			-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+			if 0 <= var21_upvw then
+			else
+			end
+		else
+			-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+			if var21_upvw == "FR" then
+				-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+				if 0 <= var21_upvw then
+				else
+				end
+			else
+				-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+				if var21_upvw == 'R' then
+					-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+					if var21_upvw == "None" then
+					else
+						-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+						if var21_upvw == "Static" then
+						else
+							-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+							if var21_upvw == "Speed" then
+							else
+								-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+								if var21_upvw == "Both" then
+									-- KONSTANTWARNING: GOTO [1208] #844
+								end
+							end
+						end
+					end
+				else
+					-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+					if var21_upvw == "RL" then
+						-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+						if var21_upvw == "None" then
+						else
+							-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+							if var21_upvw == "Static" then
+								-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+								if 0 <= var21_upvw then
+								else
+								end
+							else
+								-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+								if var21_upvw == "Speed" then
+									-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+									if 0 <= var21_upvw then
+									else
+									end
+								else
+									-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+									if var21_upvw == "Both" then
+										-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+										if 0 <= var21_upvw then
+										else
+										end
+										-- KONSTANTWARNING: GOTO [1208] #844
+									end
+								end
+							end
+						end
+					else
+						-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+						if var21_upvw == "RR" then
+							-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+							if var21_upvw == "None" then
+							else
+								-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+								if var21_upvw == "Static" then
+									-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+									if 0 <= var21_upvw then
+									else
+									end
+								else
+									-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+									if var21_upvw == "Speed" then
+										-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+										if 0 <= var21_upvw then
+										else
+										end
+									else
+										-- KONSTANTERROR: Expression was reused, decompilation is incorrect
+										if var21_upvw == "Both" then
+											-- KONSTANTERROR: Expression was reused, decompilation is incorrect (x2)
+											if 0 <= var21_upvw then
+											else
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	-- KONSTANTERROR: [198] 149. Error Block 147 end (CF ANALYSIS FAILED)
+end
+Steering = pairs_result1_4_upvr -- Setting global
+pairs_result1_4_upvr = CFrame.Angles
+DriveButtons_upvr = (math.pi/2)
+pairs_result1_4_upvr = pairs_result1_4_upvr(DriveButtons_upvr, (-math.pi/2), 0)
+DriveButtons_upvr = CFrame.Angles(0, math.pi, 0)
+wait()
+function Auto() -- Line 848
+	--[[ Upvalues[15]:
+		[1]: tbl_upvw_3 (read and write)
+		[2]: AutoStart_upvw (read and write)
+		[3]: var21_upvw (read and write)
+		[4]: var50_upvw (read and write)
+		[5]: var45_upvw (read and write)
+		[6]: var43_upvw (read and write)
+		[7]: Value_upvr (readonly)
+		[8]: var48_upvw (read and write)
+		[9]: var51_upvw (read and write)
+		[10]: var53_upvw (read and write)
+		[11]: var84_upvw (read and write)
+		[12]: var52_upvw (read and write)
+		[13]: var82_upvw (read and write)
+		[14]: var83_upvw (read and write)
+		[15]: var40_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 48 start (CF ANALYSIS FAILED)
+	local var190
+	for _, v_4 in pairs(tbl_upvw_3) do
+		if var190 < v_4.RotVelocity.Magnitude then
+			var190 = v_4.RotVelocity.Magnitude
+		end
+	end
+	-- KONSTANTERROR: [0] 1. Error Block 48 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [88] 61. Error Block 18 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [88] 61. Error Block 18 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [90] 63. Error Block 19 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [90] 63. Error Block 19 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [95] 68. Error Block 21 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [95] 68. Error Block 21 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [130] 93. Error Block 22 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [130] 93. Error Block 22 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [134] 96. Error Block 23 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [134] 96. Error Block 23 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [136] 98. Error Block 24 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [136] 98. Error Block 24 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [172] 126. Error Block 27 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [172] 126. Error Block 27 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [174] 128. Error Block 28 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [174] 128. Error Block 28 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [179] 133. Error Block 30 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [179] 133. Error Block 30 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [210] 156. Error Block 31 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [210] 156. Error Block 31 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [214] 159. Error Block 32 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [214] 159. Error Block 32 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [216] 161. Error Block 33 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [216] 161. Error Block 33 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [221] 166. Error Block 35 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [221] 166. Error Block 35 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [225] 169. Error Block 36 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [225] 169. Error Block 36 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [230] 174. Error Block 43 start (CF ANALYSIS FAILED)
+	if 0 < var40_upvw - var21_upvw.IdleThrottle / 100 and Value_upvr.DriveSeat.Velocity.Magnitude < 5 and var21_upvw.AutoShiftVers == "Old" then
+		var50_upvw = 1
+		var45_upvw = false
+	end
+	-- KONSTANTERROR: [230] 174. Error Block 43 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [258] 194. Error Block 42 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [258] 194. Error Block 42 end (CF ANALYSIS FAILED)
+end
+function Gear() -- Line 881
+	--[[ Upvalues[12]:
+		[1]: tbl_upvw_3 (read and write)
+		[2]: var51_upvw (read and write)
+		[3]: var53_upvw (read and write)
+		[4]: _1_upvw (read and write)
+		[5]: var45_upvw (read and write)
+		[6]: var21_upvw (read and write)
+		[7]: var40_upvw (read and write)
+		[8]: var50_upvw (read and write)
+		[9]: AutoStart_upvw (read and write)
+		[10]: var48_upvw (read and write)
+		[11]: var84_upvw (read and write)
+		[12]: var52_upvw (read and write)
+	]]
+	local var206
+	for i_5, v_5 in pairs(tbl_upvw_3) do
+		if var206 < v_5.RotVelocity.Magnitude then
+			var206 = v_5.RotVelocity.Magnitude
+		end
+	end
+	if var51_upvw and not var53_upvw then
+		local function INLINED_3() -- Internal function, doesn't exist in bytecode
+			i_5 = v_5.IdleThrottle
+			v_5 = var21_upvw
+			return 0 < var40_upvw - i_5 / 100
+		end
+		local function INLINED_4() -- Internal function, doesn't exist in bytecode
+			i_5 = v_5.Ratios
+			v_5 = var21_upvw
+			return var50_upvw == #i_5 - 2
+		end
+		if _1_upvw ~= "Manual" or var45_upvw or _1_upvw == "Manual" and var21_upvw.ClutchRel and INLINED_3() or INLINED_4() or _1_upvw ~= "Manual" and not AutoStart_upvw then
+			var51_upvw = false
+			return
+		end
+		v_5 = var21_upvw
+		i_5 = v_5.Ratios
+		if _1_upvw ~= "Manual" then
+			var53_upvw = true
+			if 0 < var50_upvw then
+				if var21_upvw.AutoShiftType == "DCT" then
+					i_5 = var21_upvw
+					wait(i_5.ShiftUpTime)
+				elseif var21_upvw.AutoShiftType == "Rev" then
+					repeat
+						wait()
+						v_5 = var206 * var21_upvw.Ratios[math.min(var50_upvw + 3, #i_5)] * var84_upvw
+						i_5 = math.min(v_5, var21_upvw.Redline - var21_upvw.RevBounce)
+						v_5 = var21_upvw.IdleRPM
+					until var48_upvw <= math.max(i_5, v_5) and not AutoStart_upvw and var52_upvw
+				end
+			end
+		end
+		var51_upvw = false
+		var53_upvw = false
+		if _1_upvw ~= "Manual" and not AutoStart_upvw then return end
+		i_5 = var50_upvw
+		v_5 = #var21_upvw.Ratios
+		i_5 = v_5 - 2
+		var50_upvw = math.min(i_5 + 1, i_5)
+		if _1_upvw ~= "Manual" or _1_upvw == "Manual" and var50_upvw == 1 and AutoStart_upvw then
+			var45_upvw = false
+		end
+	end
+	if var52_upvw and not var53_upvw then
+		if _1_upvw == "Manual" and not var45_upvw or var50_upvw == -1 or _1_upvw ~= "Manual" and not AutoStart_upvw then
+			var52_upvw = false
+			return
+		end
+		v_5 = var21_upvw
+		i_5 = v_5.Ratios
+		if _1_upvw ~= "Manual" then
+			var53_upvw = true
+			if 1 < var50_upvw then
+				if var21_upvw.AutoShiftType == "DCT" then
+					i_5 = var21_upvw
+					wait(i_5.ShiftDnTime)
+				elseif var21_upvw.AutoShiftType == "Rev" then
+					repeat
+						wait()
+						v_5 = var206 * var21_upvw.Ratios[math.min(var50_upvw + 1, #i_5)] * var84_upvw
+						i_5 = math.min(v_5, var21_upvw.Redline - var21_upvw.RevBounce)
+						v_5 = var21_upvw.IdleRPM
+					until math.max(i_5, v_5) <= var48_upvw and not AutoStart_upvw and var51_upvw
+				end
+			end
+		end
+		var52_upvw = false
+		var53_upvw = false
+		if _1_upvw ~= "Manual" and not AutoStart_upvw then return end
+		i_5 = var50_upvw
+		i_5 = -1
+		var50_upvw = math.max(i_5 - 1, i_5)
+		if _1_upvw ~= "Manual" or _1_upvw == "Manual" and var50_upvw == -1 and AutoStart_upvw then
+			var45_upvw = false
+		end
+	end
+end
+var160_upvw = false
+local tick_result1_upvw = tick()
+local const_number_upvw_2 = 0
+local const_number_upvw_8 = 0
+local const_number_upvw_7 = 0
+local const_number_upvw_5 = 0
+local const_number_upvw_4 = 0
+local const_number_upvw_6 = 0
+local const_number_upvw = 0
+local const_number_upvw_3 = 1
+function Engine(arg1) -- Line 930
+	--[[ Upvalues[61]:
+		[1]: var50_upvw (read and write)
+		[2]: var53_upvw (read and write)
+		[3]: AutoStart_upvw (read and write)
+		[4]: var45_upvw (read and write)
+		[5]: var47_upvw (read and write)
+		[6]: var160_upvw (read and write)
+		[7]: var21_upvw (read and write)
+		[8]: var51_upvw (read and write)
+		[9]: var39_upvw (read and write)
+		[10]: var52_upvw (read and write)
+		[11]: _1_upvw (read and write)
+		[12]: var43_upvw (read and write)
+		[13]: var40_upvw (read and write)
+		[14]: var42_upvw (read and write)
+		[15]: tick_result1_upvw (read and write)
+		[16]: var46_upvw (read and write)
+		[17]: tbl_upvw_3 (read and write)
+		[18]: const_number_upvw_2 (read and write)
+		[19]: var48_upvw (read and write)
+		[20]: var84_upvw (read and write)
+		[21]: const_number_upvw_8 (read and write)
+		[22]: const_number_upvw_7 (read and write)
+		[23]: const_number_upvw_5 (read and write)
+		[24]: var55_upvw (read and write)
+		[25]: var54_upvw (read and write)
+		[26]: var56_upvw (read and write)
+		[27]: var49_upvw (read and write)
+		[28]: var57_upvw (read and write)
+		[29]: const_number_upvw_4 (read and write)
+		[30]: var59_upvw (read and write)
+		[31]: tbl_upvw (read and write)
+		[32]: var60_upvw (read and write)
+		[33]: var61_upvw (read and write)
+		[34]: tbl_upvw_4 (read and write)
+		[35]: var64_upvw (read and write)
+		[36]: var65_upvw (read and write)
+		[37]: tbl_upvw_5 (read and write)
+		[38]: var66_upvw (read and write)
+		[39]: var67_upvw (read and write)
+		[40]: var68_upvw (read and write)
+		[41]: const_number_upvw_6 (read and write)
+		[42]: tbl_upvw_2 (read and write)
+		[43]: var62_upvw (read and write)
+		[44]: var63_upvw (read and write)
+		[45]: const_number_upvw (read and write)
+		[46]: Value_upvr (readonly)
+		[47]: var85_upvw (read and write)
+		[48]: pairs_result1_4_upvr (readonly)
+		[49]: DriveButtons_upvr (readonly)
+		[50]: var75_upvw (read and write)
+		[51]: var78_upvw (read and write)
+		[52]: ABSEnabled_upvw (read and write)
+		[53]: var36_upvw (read and write)
+		[54]: const_number_upvw_3 (read and write)
+		[55]: TCSEnabled_upvw (read and write)
+		[56]: var76_upvw (read and write)
+		[57]: var25_upvw (read and write)
+		[58]: EBrakeForce_upvw (read and write)
+		[59]: var27_upvw (read and write)
+		[60]: var26_upvw (read and write)
+		[61]: var28_upvw (read and write)
+	]]
+	-- KONSTANTERROR: [0] 1. Error Block 1 start (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [0] 1. Error Block 1 end (CF ANALYSIS FAILED)
+	-- KONSTANTERROR: [5] 5. Error Block 390 start (CF ANALYSIS FAILED)
+	local function INLINED_5() -- Internal function, doesn't exist in bytecode
+		-- KONSTANTERROR: [7] 7. Error Block 346 end (CF ANALYSIS FAILED)
+		-- KONSTANTERROR: [7] 7. Error Block 346 start (CF ANALYSIS FAILED)
+		return AutoStart_upvw
+	end
+	if var53_upvw or INLINED_5() then
+		var45_upvw = true
+		var47_upvw = 1
+		var160_upvw = false
+	end
+	if var21_upvw.Stall and var21_upvw.Clutch then
+	end
+	if var53_upvw and var51_upvw then
+		var39_upvw = 0
+		-- KONSTANTWARNING: GOTO [66] #56
+	end
+	if var53_upvw and var52_upvw then
+		var39_upvw = var21_upvw.ShiftThrot / 100
+		-- KONSTANTWARNING: GOTO [66] #56
+	end
+	-- KONSTANTERROR: [5] 5. Error Block 390 end (CF ANALYSIS FAILED)
+end
+local var216_upvw = false
+local tick_result1_upvw_2 = tick()
+function Flip() -- Line 1294
+	--[[ Upvalues[3]:
+		[1]: Value_upvr (readonly)
+		[2]: var216_upvw (read and write)
+		[3]: tick_result1_upvw_2 (read and write)
+	]]
+	if 0.1 < (Value_upvr.DriveSeat.CFrame * CFrame.Angles((math.pi/2), 0, 0)).lookVector.y or var216_upvw then
+		tick_result1_upvw_2 = tick()
+	elseif 3 <= tick() - tick_result1_upvw_2 then
+		var216_upvw = true
+		local Flip_3 = Value_upvr.DriveSeat.Flip
+		Flip_3.maxTorque = Vector3.new(10000, 0, 10000)
+		Flip_3.P = 3000
+		Flip_3.D = 500
+		wait(1)
+		Flip_3.maxTorque = Vector3.new(0, 0, 0)
+		Flip_3.P = 0
+		Flip_3.D = 0
+		var216_upvw = false
+	end
+end
+game:GetService("RunService").Stepped:Connect(function() -- Line 1321
+	--[[ Upvalues[1]:
+		[1]: var92_upvw (read and write)
+	]]
+	if var92_upvw then
+		for _, v_6 in var92_upvw do
+			v_6.Wheel.CustomPhysicalProperties = v_6.Props
+		end
+	end
+end)
+game:GetService("RunService").Heartbeat:connect(function(arg1) -- Line 1330
+	--[[ Upvalues[34]:
+		[1]: AutoStart_upvw (read and write)
+		[2]: var80_upvw (read and write)
+		[3]: var50_upvw (read and write)
+		[4]: var48_upvw (read and write)
+		[5]: var56_upvw (read and write)
+		[6]: var55_upvw (read and write)
+		[7]: var59_upvw (read and write)
+		[8]: var58_upvw (read and write)
+		[9]: var60_upvw (read and write)
+		[10]: var62_upvw (read and write)
+		[11]: var64_upvw (read and write)
+		[12]: var66_upvw (read and write)
+		[13]: var68_upvw (read and write)
+		[14]: var49_upvw (read and write)
+		[15]: var61_upvw (read and write)
+		[16]: var21_upvw (read and write)
+		[17]: var83_upvw (read and write)
+		[18]: var63_upvw (read and write)
+		[19]: var65_upvw (read and write)
+		[20]: var67_upvw (read and write)
+		[21]: _1_upvw (read and write)
+		[22]: var39_upvw (read and write)
+		[23]: var42_upvw (read and write)
+		[24]: var47_upvw (read and write)
+		[25]: var38_upvw (read and write)
+		[26]: var37_upvw (read and write)
+		[27]: var36_upvw (read and write)
+		[28]: TCSEnabled_upvw (read and write)
+		[29]: var75_upvw (read and write)
+		[30]: var76_upvw (read and write)
+		[31]: ABSEnabled_upvw (read and write)
+		[32]: var78_upvw (read and write)
+		[33]: var71_upvw (read and write)
+		[34]: Value_upvr (readonly)
+	]]
+	local maximum = math.max(arg1, 0.000001)
+	AutoStart_upvw = script.Parent.IsOn.Value
+	var80_upvw = script.Parent.ControlsOpen.Value
+	Inputs(maximum)
+	Steering(maximum)
+	Gear()
+	Engine(maximum)
+	script.Parent.Values.Gear.Value = var50_upvw
+	script.Parent.Values.RPM.Value = var48_upvw
+	script.Parent.Values.Boost.Value = var56_upvw / 2 * var55_upvw + var59_upvw / 2 * var58_upvw
+	script.Parent.Values.BoostTurbo.Value = var56_upvw / 2 * var55_upvw
+	script.Parent.Values.BoostSuper.Value = var59_upvw / 2 * var58_upvw
+	script.Parent.Values.HpNatural.Value = var60_upvw
+	script.Parent.Values.HpElectric.Value = var62_upvw
+	script.Parent.Values.HpTurbo.Value = var64_upvw
+	script.Parent.Values.HpSuper.Value = var66_upvw
+	script.Parent.Values.HpBoosted.Value = var68_upvw
+	script.Parent.Values.Horsepower.Value = var49_upvw
+	script.Parent.Values.TqNatural.Value = var61_upvw / var21_upvw.Ratios[var50_upvw + 2] / var83_upvw
+	script.Parent.Values.TqElectric.Value = var63_upvw / var21_upvw.Ratios[var50_upvw + 2] / var83_upvw
+	script.Parent.Values.TqTurbo.Value = var65_upvw / var21_upvw.Ratios[var50_upvw + 2] / var83_upvw
+	script.Parent.Values.TqSuper.Value = var67_upvw / var21_upvw.Ratios[var50_upvw + 2] / var83_upvw
+	script.Parent.Values.TqBoosted.Value = script.Parent.Values.TqTurbo.Value + script.Parent.Values.TqSuper.Value
+	script.Parent.Values.Torque.Value = script.Parent.Values.TqNatural.Value + script.Parent.Values.TqElectric.Value + script.Parent.Values.TqBoosted.Value
+	script.Parent.Values.TransmissionMode.Value = _1_upvw
+	script.Parent.Values.Throttle.Value = var39_upvw
+	script.Parent.Values.Brake.Value = var42_upvw
+	if script.Parent.Values.AutoClutch.Value then
+		script.Parent.Values.Clutch.Value = var47_upvw
+	end
+	script.Parent.Values.SteerC.Value = var38_upvw
+	script.Parent.Values.SteerT.Value = var37_upvw
+	script.Parent.Values.PBrake.Value = var36_upvw
+	script.Parent.Values.TCS.Value = TCSEnabled_upvw
+	script.Parent.Values.TCSActive.Value = var75_upvw
+	script.Parent.Values.TCSAmt.Value = 1 - var76_upvw
+	script.Parent.Values.ABS.Value = ABSEnabled_upvw
+	script.Parent.Values.ABSActive.Value = var78_upvw
+	script.Parent.Values.MouseSteerOn.Value = var71_upvw
+	script.Parent.Values.Velocity.Value = Value_upvr.DriveSeat.Velocity
+end)
+while wait(0.0667) do
+	if _1_upvw == "Auto" then
+		Auto()
+	end
+	if var21_upvw.AutoFlip then
+		Flip()
+	end
+end
