@@ -1,4 +1,4 @@
--- Midnight Chasers GUI: Autofarm (с очисткой мира) + Auto Race1 (без очистки)
+-- Midnight Chasers GUI: Autofarm (с очисткой мира) + Auto Race1 (solo, цикл гонок)
 
 local Players           = game:GetService("Players")
 local UIS               = game:GetService("UserInputService")
@@ -239,7 +239,7 @@ local farmFrames = {
 }
 
 --------------------------------------------------
--- Race1 чекпоинты (как ты скинул)
+-- Race1 чекпоинты
 --------------------------------------------------
 
 local race1Frames = {
@@ -318,10 +318,10 @@ local race1Running   = false
 
 local function runFarmRoute()
     autofarmRunning = true
-    ensureGroundPart()
 
     local plr = LocalPlayer
     hideWorkspaceObjects(plr)
+    ensureGroundPart()
     task.wait()
 
     while autofarmRunning do
@@ -344,28 +344,111 @@ local function runFarmRoute()
 end
 
 --------------------------------------------------
--- Auto Race1 (без очистки мира, один круг)
+-- Race1: Config / QueueRegion / Solo / Finish
+--------------------------------------------------
+
+local function getRace1Config()
+    local races = Workspace:FindFirstChild("Races")
+    if not races then return nil end
+    local race1 = races:FindFirstChild("Race1")
+    if not race1 then return nil end
+    local config = race1:FindFirstChild("Config")
+    return config
+end
+
+local function teleportToQueueRegion()
+    local config = getRace1Config()
+    if not config then return end
+
+    local queueRegion = config:FindFirstChild("QueueRegion")
+    if not queueRegion or not queueRegion:IsA("BasePart") then return end
+
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    hrp.CFrame = queueRegion.CFrame + Vector3.new(0, 5, 0)
+end
+
+local function startSoloRace()
+    local config = getRace1Config()
+    if not config then return end
+
+    local solo = config:FindFirstChild("Solo")
+    if solo and solo:IsA("BoolValue") then
+        solo.Value = true
+    end
+end
+
+local function getFinishPart()
+    local config = getRace1Config()
+    if not config then return nil end
+    local finish = config:FindFirstChild("Finish")
+    if finish and finish:IsA("BasePart") then
+        return finish
+    end
+    return nil
+end
+
+local function isNearFinish(car, finishPart)
+    if not car or not finishPart then return false end
+    local primary = car.PrimaryPart
+    if not primary then return false end
+    local dist = (primary.Position - finishPart.Position).Magnitude
+    return dist < 50 -- радиус попадания по финишу, можешь подправить
+end
+
+--------------------------------------------------
+-- Auto Race1: бесконечный цикл гонок
 --------------------------------------------------
 
 local function runRace1Route()
-    ensureGroundPart()
+    race1Running = true
+    local finishPart = getFinishPart()
 
-    local car = getCar()
-    if not car then
-        race1Running = false
-        return
-    end
-
-    local speed = getSpeed()
-
-    for _, cf in ipairs(race1Frames) do
+    while race1Running do
+        -- пауза перед началом следующей гонки
+        task.wait(4)
         if not race1Running then break end
-        tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
+
+        teleportToQueueRegion()
+        task.wait(1)
+        if not race1Running then break end
+
+        startSoloRace()
+
+        -- ждём машину
+        local car
+        for i = 1, 60 do
+            car = getCar()
+            if car then break end
+            task.wait(0.1)
+            if not race1Running then break end
+        end
+        if not race1Running or not car then
+            break
+        end
+
+        ensureGroundPart()
+        local speed = getSpeed()
+
+        -- один круг / до финиша
+        for _, cf in ipairs(race1Frames) do
+            if not race1Running then break end
+            tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
+
+            if finishPart and isNearFinish(car, finishPart) then
+                break
+            end
+        end
+
+        if currentTween then
+            currentTween:Cancel()
+        end
+
+        -- цикл не прерываем: while снова подождёт 4 сек и заново телепортнёт в очередь
     end
 
-    if currentTween then
-        currentTween:Cancel()
-    end
     race1Running = false
 end
 
