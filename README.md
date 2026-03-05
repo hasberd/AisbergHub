@@ -1,4 +1,4 @@
--- Midnight Chasers GUI (управляет глобальным множителем drive)
+-- Midnight Chasers GUI (без вмешательства в A-Chassis)
 
 local Players   = game:GetService("Players")
 local UIS       = game:GetService("UserInputService")
@@ -48,7 +48,10 @@ closeBtn.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
+--------------------------------------------------
 -- Remove NPCVehicles
+--------------------------------------------------
+
 local removeBtn = Instance.new("TextButton")
 removeBtn.Size = UDim2.new(1, -20, 0, 30)
 removeBtn.Position = UDim2.new(0, 10, 0, 40)
@@ -67,13 +70,16 @@ removeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- поле множителя скорости
+--------------------------------------------------
+-- Поле для скорости (чисто для настроек внешнего скрипта)
+--------------------------------------------------
+
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(1, -20, 0, 20)
 speedLabel.Position = UDim2.new(0, 10, 0, 80)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.GothamBold
-speedLabel.Text = "Speed multiplier:"
+speedLabel.Text = "Speed (info for script):"
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.TextSize = 14
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -86,57 +92,60 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "1 = стандарт, 2 = в 2 раза быстрее"
+speedBox.PlaceholderText = "например 100 или 1.5"
 speedBox.Text = "1"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
 speedBox.ClearTextOnFocus = false
 speedBox.Parent = mainFrame
 
-local function applyMultiplier()
+local function getSpeedSetting()
     local n = tonumber(speedBox.Text)
     if not n then
         n = 1
         speedBox.Text = "1"
     end
-    n = math.max(0, n)
-    getgenv().Aisberg_SpeedMultiplier = n
+    return n
 end
 
-speedBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        applyMultiplier()
-    end
-end)
+--------------------------------------------------
+-- Кнопка запуска внешнего автофарма
+--------------------------------------------------
 
--- кнопка включения/выключения “autofarm”
--- по сути, просто ставит multiplier >0 или 0
 local autofarmBtn = Instance.new("TextButton")
 autofarmBtn.Size = UDim2.new(1, -20, 0, 35)
 autofarmBtn.Position = UDim2.new(0, 10, 1, -45)
 autofarmBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
 autofarmBtn.BorderSizePixel = 0
 autofarmBtn.Font = Enum.Font.GothamBold
-autofarmBtn.Text = "Start Autofarm"
+autofarmBtn.Text = "Start WINTER Autofarm"
 autofarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autofarmBtn.TextSize = 16
+autofarmBtn.TextSize = 14
 autofarmBtn.Parent = mainFrame
 
-local running = false
+local externalLoaded = false
 
 autofarmBtn.MouseButton1Click:Connect(function()
-    if not running then
-        running = true
-        autofarmBtn.Text = "Stop Autofarm"
-        applyMultiplier()                  -- задать множитель из TextBox
+    if not externalLoaded then
+        externalLoaded = true
+        autofarmBtn.Text = "Autofarm loaded"
+
+        -- пример: передаём настройки во внешний скрипт
+        getgenv().Aisberg_MidnightSettings = {
+            Speed = getSpeedSetting()
+        }
+
+        -- здесь твой выбранный автофарм: WINTER / AisbergHub / любой другой
+        loadstring(game:HttpGet("https://rawscripts.net/raw/WINTER!Midnight-Chasers:-Highway-Racing-Midnight-Chasers-Autofarm-event-78513"))()
     else
-        running = false
-        autofarmBtn.Text = "Start Autofarm"
-        getgenv().Aisberg_SpeedMultiplier = 1   -- вернуть стандарт
+        warn("Автофарм уже загружен. Отключай его в его GUI или перезаходи.")
     end
 end)
 
--- скрытие GUI на G
+--------------------------------------------------
+-- Тоггл GUI на G
+--------------------------------------------------
+
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.G then
