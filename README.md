@@ -1,4 +1,4 @@
--- Midnight Chasers Autofarm GUI (маршрут + выборочная очистка мира)
+-- Midnight Chasers GUI: Autofarm + Auto Race1
 
 local Players           = game:GetService("Players")
 local UIS               = game:GetService("UserInputService")
@@ -20,8 +20,8 @@ screenGui.Parent = PlayerGui
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 260, 0, 190)
-mainFrame.Position = UDim2.new(0, 20, 0.5, -95)
+mainFrame.Size = UDim2.new(0, 260, 0, 230)
+mainFrame.Position = UDim2.new(0, 20, 0.5, -115)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -77,7 +77,7 @@ removeBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------
--- Ввод скорости
+-- Speed
 --------------------------------------------------
 
 local speedLabel = Instance.new("TextLabel")
@@ -98,7 +98,7 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "рекомендую 200–350"
+speedBox.PlaceholderText = "200–350 норм"
 speedBox.Text = "250"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
@@ -115,7 +115,7 @@ local function getSpeed()
 end
 
 --------------------------------------------------
--- Скрытие/возврат объектов
+-- Очистка мира
 --------------------------------------------------
 
 local function hideWorkspaceObjects(plr)
@@ -144,18 +144,15 @@ local function hideWorkspaceObjects(plr)
         local name = v.Name or ""
         local isPlayerCar = string.find(name, plr.Name) or string.find(name, plr.DisplayName)
 
-        -- Terrain всегда оставляем
         if v == Workspace.Terrain then
             continue
         end
 
-        -- если это один из перечисленных типов окружения — точно убираем
         if mustRemoveByName[name] then
             v.Parent = backup
             continue
         end
 
-        -- всё остальное убираем, если это не твоя машина
         if (v:IsA("Model") or v:IsA("Folder") or v:IsA("MeshPart"))
             and not isPlayerCar
             and name ~= "" then
@@ -175,7 +172,7 @@ local function restoreWorkspaceObjects()
 end
 
 --------------------------------------------------
--- Логика движения машины
+-- Платформа и движение
 --------------------------------------------------
 
 local function ensureGroundPart()
@@ -220,15 +217,16 @@ local function tweenToPosition(car, targetCFrame, speed)
     currentTween = TweenService:Create(cfValue, info, {Value = targetCFrame})
     currentTween:Play()
 
-    repeat
-        task.wait()
-    until currentTween.PlaybackState ~= Enum.PlaybackState.Playing
+    repeat task.wait() until currentTween.PlaybackState ~= Enum.PlaybackState.Playing
 
     cfValue:Destroy()
 end
 
--- точки маршрута
-local frames = {
+--------------------------------------------------
+-- Обычный маршрутный фарм (старый frames)
+--------------------------------------------------
+
+local farmFrames = {
     CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414),
     CFrame.new(2751.86499, -26.0098934, 3694.63354, 3.35e-05, 0.951051414, -0.309032798, -1, 3.35e-05, -5.32e-06, 5.32e-06, 0.309032798, 0.951051414),
     CFrame.new(-8821.48438, -26.0098934, 2042.49939, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414),
@@ -240,37 +238,95 @@ local frames = {
     CFrame.new(4887.24609, -26.0098934, 1222.96826, -3.36e-05, 0.951051414, -0.309032798, -1, -3.36e-05, 5.32e-06, -5.32e-06, 0.309032798, 0.951051414)
 }
 
+--------------------------------------------------
+-- Race1 чекпоинты (по твоим CFrame)
+--------------------------------------------------
+
+local race1Frames = {
+    CFrame.new(3322.75391, -2.98221874, 856.207031, 0.961249948, 0, -0.275678426, 0, 1, 0, 0.275678426, 0, 0.961249948), -- 1
+    CFrame.new(3029.10547, -2.98221874, 660.068298, 0.90629667, 0, -0.422642082, 0, 1, 0, 0.422642082, 0, 0.90629667), -- 2
+    CFrame.new(2712.34058, -2.71214509, 551.92157, 0.961249948, 0, -0.275678426, 0, 1, 0, 0.275678426, 0, 0.961249948), -- 3
+    CFrame.new(2243.67383, 11.4915237, 400.449432, 0.961249948, 0, -0.275678426, 0, 1, 0, 0.275678426, 0, 0.961249948), -- 4
+    CFrame.new(1904.4292, 26.7461739, 291.238892, 0.961249948, 0, -0.275678426, 0, 1, 0, 0.275678426, 0, 0.961249948), -- 5
+    CFrame.new(1530.24976, 31.9470787, 174.713318, 0.961249948, 0, -0.275678426, 0, 1, 0, 0.275678426, 0, 0.961249948), -- 6
+    CFrame.new(1003.00555, 31.9470787, 89.626709, 0.997561574, 0, -0.0697919354, 0, 1, 0, 0.0697919354, 0, 0.997561574), -- 7
+    CFrame.new(650.276245, 31.9470787, 85.0392456, 0.997561574, 0, -0.0697919354, 0, 1, 0, 0.0697919354, 0, 0.997561574), -- 8
+    CFrame.new(-70.900238, 31.9470787, 85.0537109, 0.997561574, 0, -0.0697919354, 0, 1, 0, 0.0697919354, 0, 0.997561574), -- 9
+    CFrame.new(-598.24646, 31.9470787, 90.0340347, 0.999847949, 0, -0.017436387, 0, 1, 0, 0.017436387, 0, 0.999847949), -- 10
+    CFrame.new(-1268.20715, 27.0799713, 127.024689, 0.987685978, 0, 0.156449571, 0, 1, 0, -0.156449571, 0, 0.987685978), -- 11
+    CFrame.new(-1907.91687, 0.0381088257, 273.76712, 0.987685978, 0, 0.156449571, 0, 1, 0, -0.156449571, 0, 0.987685978), -- 12
+    CFrame.new(-2636.75439, 1.82433498, 428.236969, 0.987685978, 0, 0.156449571, 0, 1, 0, -0.156449571, 0, 0.987685978), -- 13
+    CFrame.new(-3216.68896, 31.0067902, 553.627808, 0.978144467, 0, 0.207926437, 0, 1, 0, -0.207926437, 0, 0.978144467), -- 14
+    CFrame.new(-3950.38281, 35.2188492, 709.579285, 0.978144467, 0, 0.207926437, 0, 1, 0, -0.207926437, 0, 0.978144467), -- 15
+    CFrame.new(-4660.51465, 42.7382584, 850.088745, 0.978144467, 0, 0.207926437, 0, 1, 0, -0.207926437, 0, 0.978144467), -- 16
+    CFrame.new(-5585.84326, 31.2532387, 1047.83704, 0.978144467, 0, 0.207926437, 0, 1, 0, -0.207926437, 0, 0.978144467), -- 17
+    CFrame.new(-6619.23975, 21.7995338, 1267.49231, 0.978144467, 0, 0.207926437, 0, 1, 0, -0.207926437, 0, 0.978144467), -- 18
+    CFrame.new(-7327.26025, 22.3056812, 1417.98682, 0.978144467, 0, 0.207926437, 0, 1, 0, -0.207926437, 0, 0.978144467), -- 19
+    CFrame.new(-7820.7583, 21.3901939, 1591.68262, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 20
+    CFrame.new(-8344.27539, 20.6600914, 1812.5863, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 21
+    CFrame.new(-8820.78027, -8.071908, 2015.47388, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 22
+    CFrame.new(-9545.16992, -71.8721237, 2322.55127, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 23
+    CFrame.new(-10178.4844, -110.570114, 2591.98633, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 24
+    CFrame.new(-10954.001, -101.621788, 2920.5835, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 25
+    CFrame.new(-11599.6211, -49.2231827, 3194.64307, 0.933587551, 0, 0.358349502, 0, 1, 0, -0.358349502, 0, 0.933587551), -- 26
+    CFrame.new(-12213.9854, -3.47495794, 3455.35791, 0.919960797, 0.0320986696, 0.390693992, -0.0348859616, 0.999391317, 0, -0.390454978, -0.0136640742, 0.920520604), -- 27
+    CFrame.new(-12793.209, 10.828455, 3767.78052, 0.81912142, 0.00712457765, 0.573575914, -0.00868201349, 0.99996233, 0, -0.573554456, -0.0049616769, 0.819152415), -- 28
+    CFrame.new(-13161.6553, 11.159811, 4079.8335, 0.707134247, 0, 0.707079291, 0, 1, 0, -0.707079291, 0, 0.707134247), -- 29
+    CFrame.new(-13403.7881, 11.0526257, 4361.42969, 0.601813793, 0, 0.798636556, 0, 1, 0, -0.798636556, 0, 0.601813793), -- 30
+    CFrame.new(-13679.3564, 8.66459465, 4764.74365, 0.559090972, -0.00979252718, 0.829048514, 0.0174922645, 0.999846995, 0, -0.828921795, 0.0144943399, 0.559176683), -- 31
+    CFrame.new(-14051.54, -1.67275488, 5316.52441, 0.559090972, -0.00979252718, 0.829048514, 0.0174922645, 0.999846995, 0, -0.828921795, 0.0144943399, 0.559176683), -- 32
+    CFrame.new(-14523.7363, 15.3383675, 6016.58105, 0.559090972, -0.00979252718, 0.829048514, 0.0174922645, 0.999846995, 0, -0.828921795, 0.0144943399, 0.559176683), -- 33
+    CFrame.new(-14915.6709, 18.7657909, 6628.46875, 0.492420912, 0, 0.870357215, 0, 1, 0, -0.870357215, 0, 0.492420912), -- 34
+    CFrame.new(-15249.7275, 18.6684055, 7331.59912, 0.36646831, 0, 0.930430532, 0, 1, 0, -0.930430532, 0, 0.36646831), -- 35
+    CFrame.new(-15492.6279, 15.5853186, 8070.8833, 0.292322516, -0.00514886947, 0.956305981, 0.0174715482, 0.999847353, 0, -0.956160188, 0.0166956857, 0.292367876), -- 36
+    CFrame.new(-15689.4658, 3.47872114, 8714.70117, 0.292322516, -0.00514886947, 0.956305981, 0.0174715482, 0.999847353, 0, -0.956160188, 0.0166956857, 0.292367876), -- 37
+    CFrame.new(-15938.4365, -8.56782627, 9528.88477, 0.292318881, 0, 0.956320882, 0, 1, 0, -0.956320882, 0, 0.292318881), -- 38
+    CFrame.new(-16209.9053, 10.1734743, 10416.8262, 0.292318881, 0, 0.956320882, 0, 1, 0, -0.956320882, 0, 0.292318881), -- 39
+    CFrame.new(-16381.2129, 20.5226669, 11257.2275, 0.15644598, 0, 0.987686574, 0, 1, 0, -0.987686574, 0, 0.15644598), -- 40
+    CFrame.new(-16520.5859, 23.4347839, 12137.5049, 0.156420708, 0.0034087766, 0.987684667, -0.0217956547, 0.999762475, 0, -0.987450063, -0.0215274431, 0.156457841) -- Finish
+}
+
+
+--------------------------------------------------
+-- Общая логика запуска (кар + маршрут)
+--------------------------------------------------
+
+local function getCar()
+    local plr = LocalPlayer
+    local char = plr.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local seat = hum and hum.SeatPart
+    if not seat then return nil end
+
+    local car = seat.Parent
+    local body = car:FindFirstChild("Body")
+    local weight = body and body:FindFirstChild("#Weight")
+    if not weight then
+        warn("Не найден Body/#Weight в машине")
+        return nil
+    end
+
+    car.PrimaryPart = weight
+    return car
+end
+
 local autofarmRunning = false
+local race1Running   = false
 
-local function runAutofarm()
-    autofarmRunning = true
+local function runRoute(frames)
     ensureGroundPart()
-
     local plr = LocalPlayer
     hideWorkspaceObjects(plr)
     task.wait()
 
-    while autofarmRunning do
-        local char = plr.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local seat = hum and hum.SeatPart
-
-        if not seat then
-            task.wait(0.2)
+    while autofarmRunning or race1Running do
+        local car = getCar()
+        if not car then
+            task.wait(0.5)
         else
-            local car = seat.Parent
-            local body = car:FindFirstChild("Body")
-            local weight = body and body:FindFirstChild("#Weight")
-            if not weight then
-                warn("Не найден Body/#Weight в машине")
-                break
-            end
-
-            car.PrimaryPart = weight
             local speed = getSpeed()
-
             for _, cf in ipairs(frames) do
-                if not autofarmRunning then break end
+                if not (autofarmRunning or race1Running) then break end
                 tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
             end
         end
@@ -283,32 +339,58 @@ local function runAutofarm()
 end
 
 --------------------------------------------------
--- Кнопка Autofarm
+-- Кнопки
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
-autofarmBtn.Size = UDim2.new(1, -20, 0, 35)
-autofarmBtn.Position = UDim2.new(0, 10, 1, -45)
+autofarmBtn.Size = UDim2.new(1, -20, 0, 30)
+autofarmBtn.Position = UDim2.new(0, 10, 0, 140)
 autofarmBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
 autofarmBtn.BorderSizePixel = 0
 autofarmBtn.Font = Enum.Font.GothamBold
 autofarmBtn.Text = "Start Autofarm"
 autofarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autofarmBtn.TextSize = 16
+autofarmBtn.TextSize = 14
 autofarmBtn.Parent = mainFrame
 
+local race1Btn = Instance.new("TextButton")
+race1Btn.Size = UDim2.new(1, -20, 0, 30)
+race1Btn.Position = UDim2.new(0, 10, 0, 175)
+race1Btn.BackgroundColor3 = Color3.fromRGB(80, 80, 150)
+race1Btn.BorderSizePixel = 0
+race1Btn.Font = Enum.Font.GothamBold
+race1Btn.Text = "Start Auto Race1"
+race1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+race1Btn.TextSize = 14
+race1Btn.Parent = mainFrame
+
 autofarmBtn.MouseButton1Click:Connect(function()
+    if race1Running then return end
     if not autofarmRunning then
         autofarmRunning = true
         autofarmBtn.Text = "Stop Autofarm"
-        task.spawn(runAutofarm)
+        task.spawn(function()
+            runRoute(farmFrames)
+            autofarmRunning = false
+            autofarmBtn.Text = "Start Autofarm"
+        end)
     else
         autofarmRunning = false
-        autofarmBtn.Text = "Start Autofarm"
-        if currentTween then
-            currentTween:Cancel()
-        end
-        restoreWorkspaceObjects()
+    end
+end)
+
+race1Btn.MouseButton1Click:Connect(function()
+    if autofarmRunning then return end
+    if not race1Running then
+        race1Running = true
+        race1Btn.Text = "Stop Auto Race1"
+        task.spawn(function()
+            runRoute(race1Frames)
+            race1Running = false
+            race1Btn.Text = "Start Auto Race1"
+        end)
+    else
+        race1Running = false
     end
 end)
 
