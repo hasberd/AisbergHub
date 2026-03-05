@@ -239,7 +239,7 @@ local farmFrames = {
 }
 
 --------------------------------------------------
--- Race1 чекпоинты
+-- Race1 чекпоинты (последний — Finish)
 --------------------------------------------------
 
 local race1Frames = {
@@ -344,23 +344,26 @@ local function runFarmRoute()
 end
 
 --------------------------------------------------
--- Race1: Config / QueueRegion / Solo / Finish
+-- Race1: QueueRegion / Config.Solo
 --------------------------------------------------
 
-local function getRace1Config()
+local function getRace1()
     local races = Workspace:FindFirstChild("Races")
     if not races then return nil end
-    local race1 = races:FindFirstChild("Race1")
+    return races:FindFirstChild("Race1")
+end
+
+local function getRace1Config()
+    local race1 = getRace1()
     if not race1 then return nil end
-    local config = race1:FindFirstChild("Config")
-    return config
+    return race1:FindFirstChild("Config")
 end
 
 local function teleportToQueueRegion()
-    local config = getRace1Config()
-    if not config then return end
+    local race1 = getRace1()
+    if not race1 then return end
 
-    local queueRegion = config:FindFirstChild("QueueRegion")
+    local queueRegion = race1:FindFirstChild("QueueRegion")
     if not queueRegion or not queueRegion:IsA("BasePart") then return end
 
     local char = LocalPlayer.Character
@@ -380,31 +383,12 @@ local function startSoloRace()
     end
 end
 
-local function getFinishPart()
-    local config = getRace1Config()
-    if not config then return nil end
-    local finish = config:FindFirstChild("Finish")
-    if finish and finish:IsA("BasePart") then
-        return finish
-    end
-    return nil
-end
-
-local function isNearFinish(car, finishPart)
-    if not car or not finishPart then return false end
-    local primary = car.PrimaryPart
-    if not primary then return false end
-    local dist = (primary.Position - finishPart.Position).Magnitude
-    return dist < 50 -- радиус попадания по финишу
-end
-
 --------------------------------------------------
--- Auto Race1: цикл гонок с заданным порядком
+-- Auto Race1: цикл гонок
 --------------------------------------------------
 
 local function runRace1Route()
     race1Running = true
-    local finishPart = getFinishPart()
 
     while race1Running do
         -- 1) сразу телепорт к очереди
@@ -434,12 +418,13 @@ local function runRace1Route()
         ensureGroundPart()
         local speed = getSpeed()
 
-        -- 5) едем по чекпоинтам до Finish
-        for _, cf in ipairs(race1Frames) do
+        -- 5) едем по чекпоинтам до последнего (Finish)
+        for idx, cf in ipairs(race1Frames) do
             if not race1Running then break end
             tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
 
-            if finishPart and isNearFinish(car, finishPart) then
+            -- последний CFrame — считаем финишем
+            if idx == #race1Frames then
                 break
             end
         end
