@@ -1,4 +1,4 @@
--- Midnight Chasers GUI (DriveSeat control)
+-- Midnight Chasers GUI (обёртка над WINTER-автофармом)
 
 local Players      = game:GetService("Players")
 local UIS          = game:GetService("UserInputService")
@@ -77,7 +77,7 @@ removeBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------
--- Ввод «скорости» (по сути сила газа)
+-- Поле для твоей «скорости» (просто визуал/настройка для внешнего скрипта)
 --------------------------------------------------
 
 local speedLabel = Instance.new("TextLabel")
@@ -85,7 +85,7 @@ speedLabel.Size = UDim2.new(1, -20, 0, 20)
 speedLabel.Position = UDim2.new(0, 10, 0, 80)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.GothamBold
-speedLabel.Text = "Throttle (0–1):"
+speedLabel.Text = "Speed (для инфо):"
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.TextSize = 14
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -98,30 +98,15 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "например 1 или 0.7"
-speedBox.Text = "1"
+speedBox.PlaceholderText = "сюда можешь писать любую скорость"
+speedBox.Text = "100"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
 speedBox.ClearTextOnFocus = false
 speedBox.Parent = mainFrame
 
-local throttleValue = 1
-
-speedBox.FocusLost:Connect(function(enterPressed)
-    if not enterPressed then return end
-    local value = tonumber(speedBox.Text)
-    if value then
-        value = math.clamp(value, -1, 1)
-        throttleValue = value
-        speedBox.Text = tostring(value)
-    else
-        speedBox.Text = tostring(throttleValue)
-    end
-end)
-
 --------------------------------------------------
--- Autofarm через DriveSeat
--- W – Throttle = 1, S – Throttle = -1, A/D – Steer, Space – тормоз [web:64][web:70]
+-- Кнопка Autofarm: включает тот самый WINTER-скрипт
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
@@ -130,77 +115,31 @@ autofarmBtn.Position = UDim2.new(0, 10, 1, -45)
 autofarmBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
 autofarmBtn.BorderSizePixel = 0
 autofarmBtn.Font = Enum.Font.GothamBold
-autofarmBtn.Text = "Start Autofarm"
+autofarmBtn.Text = "Start WINTER Autofarm"
 autofarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autofarmBtn.TextSize = 16
+autofarmBtn.TextSize = 14
 autofarmBtn.Parent = mainFrame
 
-local running = false
-local driveSeat
-
--- Находим DriveSeat внутри машины игрока
-local function getDriveSeat()
-    local playerModel = Workspace:FindFirstChild(LocalPlayer.Name)
-    if not playerModel then
-        warn("player model not found in Workspace: " .. LocalPlayer.Name)
-        return nil
-    end
-
-    local carName = LocalPlayer.Name .. "'s Car"
-    local car = playerModel:FindFirstChild(carName)
-    if not car or not car:IsA("Model") then
-        warn("car model not found: " .. carName)
-        return nil
-    end
-
-    local seat = car:FindFirstChild("DriveSeat", true)
-    if not seat or not seat:IsA("VehicleSeat") then
-        warn("DriveSeat not found in car")
-        return nil
-    end
-    return seat
-end
-
--- Простой паттерн: газ вперёд и лёгкий поворот,
--- чтобы машина ехала по кругу/трассе, пока не выключишь
-local steerDirection = 0 -- 0 = прямо; >0 вправо; <0 влево
-
-local function startAutofarm()
-    if running then return end
-    running = true
-    autofarmBtn.Text = "Stop Autofarm"
-
-    driveSeat = getDriveSeat()
-    if not driveSeat then
-        running = false
-        autofarmBtn.Text = "Start Autofarm"
-        return
-    end
-
-    -- Включаем «газ»
-    driveSeat.ThrottleFloat = throttleValue   -- аналог постоянного зажатого W [web:62][web:66]
-    driveSeat.SteerFloat    = steerDirection  -- можно поменять знак, если трасса в другую сторону
-end
-
-local function stopAutofarm()
-    running = false
-    autofarmBtn.Text = "Start Autofarm"
-    if driveSeat then
-        driveSeat.ThrottleFloat = 0
-        driveSeat.SteerFloat    = 0
-    end
-end
+local externalRunning = false
+local externalConnection -- если вдруг надо будет отрубать (зависит от того, как написан внешний скрипт)
 
 autofarmBtn.MouseButton1Click:Connect(function()
-    if running then
-        stopAutofarm()
+    if not externalRunning then
+        externalRunning = true
+        autofarmBtn.Text = "WINTER Autofarm Loaded"
+
+        -- просто запускаем внешний скрипт, который уже умеет правильно двигать машину
+        loadstring(game:HttpGet("https://rawscripts.net/raw/WINTER!Midnight-Chasers:-Highway-Racing-Midnight-Chasers-Autofarm-event-78513"))()
+        -- у большинства таких скриптов автодрайв идёт сам, без необходимости ещё раз жать кнопку [web:72][web:69]
     else
-        startAutofarm()
+        -- обычно эти автоскрипты сами делают кнопку Stop внутри своего GUI.
+        -- Снаружи корректно «выключить» их нельзя, если автор не сделал глобальную переменную.
+        warn("WINTER-автофарм уже был загружен. Отключай его в его же GUI или перезаходи в игру.")
     end
 end)
 
 --------------------------------------------------
--- Тоггл GUI на G
+-- Тоггл нашего GUI на G
 --------------------------------------------------
 
 UIS.InputBegan:Connect(function(input, gpe)
