@@ -1,4 +1,4 @@
--- Midnight Chasers GUI + DriveModule
+-- Midnight Chasers GUI (управляет глобальным множителем drive)
 
 local Players   = game:GetService("Players")
 local UIS       = game:GetService("UserInputService")
@@ -6,15 +6,6 @@ local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
-
--- ПУТЬ К МОДУЛЮ !!!
--- если ModuleScript лежит, например, в ReplicatedStorage:ReplicatedStorage.AisbergHub.DriveModule
--- то:
-local DriveModule = require(game:GetService("ReplicatedStorage"):WaitForChild("AisbergHub"):WaitForChild("DriveModule"))
-
---------------------------------------------------
--- GUI с крестиком
---------------------------------------------------
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "MidnightChasersGui"
@@ -57,10 +48,7 @@ closeBtn.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
---------------------------------------------------
 -- Remove NPCVehicles
---------------------------------------------------
-
 local removeBtn = Instance.new("TextButton")
 removeBtn.Size = UDim2.new(1, -20, 0, 30)
 removeBtn.Position = UDim2.new(0, 10, 0, 40)
@@ -79,10 +67,7 @@ removeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
---------------------------------------------------
--- Поле ввода множителя скорости
---------------------------------------------------
-
+-- поле множителя скорости
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(1, -20, 0, 20)
 speedLabel.Position = UDim2.new(0, 10, 0, 80)
@@ -101,23 +86,31 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "1 = норм, 2 = в 2 раза быстрее"
+speedBox.PlaceholderText = "1 = стандарт, 2 = в 2 раза быстрее"
 speedBox.Text = "1"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
 speedBox.ClearTextOnFocus = false
 speedBox.Parent = mainFrame
 
-local function getMultiplier()
+local function applyMultiplier()
     local n = tonumber(speedBox.Text)
-    if not n then return 1 end
-    return math.max(0, n)
+    if not n then
+        n = 1
+        speedBox.Text = "1"
+    end
+    n = math.max(0, n)
+    getgenv().Aisberg_SpeedMultiplier = n
 end
 
---------------------------------------------------
--- Кнопка Autofarm (Start/Stop DriveModule)
---------------------------------------------------
+speedBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        applyMultiplier()
+    end
+end)
 
+-- кнопка включения/выключения “autofarm”
+-- по сути, просто ставит multiplier >0 или 0
 local autofarmBtn = Instance.new("TextButton")
 autofarmBtn.Size = UDim2.new(1, -20, 0, 35)
 autofarmBtn.Position = UDim2.new(0, 10, 1, -45)
@@ -135,19 +128,15 @@ autofarmBtn.MouseButton1Click:Connect(function()
     if not running then
         running = true
         autofarmBtn.Text = "Stop Autofarm"
-        DriveModule.SetSpeedMultiplier(getMultiplier())
-        DriveModule.Start()
+        applyMultiplier()                  -- задать множитель из TextBox
     else
         running = false
         autofarmBtn.Text = "Start Autofarm"
-        DriveModule.Stop()
+        getgenv().Aisberg_SpeedMultiplier = 1   -- вернуть стандарт
     end
 end)
 
---------------------------------------------------
--- Тоггл GUI на G
---------------------------------------------------
-
+-- скрытие GUI на G
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.G then
