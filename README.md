@@ -1,11 +1,16 @@
--- Midnight Chasers GUI (DriveSeat control, car in Workspace)
+-- Midnight Chasers GUI + DriveModule
 
-local Players      = game:GetService("Players")
-local UIS          = game:GetService("UserInputService")
-local Workspace    = game:GetService("Workspace")
+local Players   = game:GetService("Players")
+local UIS       = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ПУТЬ К МОДУЛЮ !!!
+-- если ModuleScript лежит, например, в ReplicatedStorage:ReplicatedStorage.AisbergHub.DriveModule
+-- то:
+local DriveModule = require(game:GetService("ReplicatedStorage"):WaitForChild("AisbergHub"):WaitForChild("DriveModule"))
 
 --------------------------------------------------
 -- GUI с крестиком
@@ -71,13 +76,11 @@ removeBtn.MouseButton1Click:Connect(function()
     local folder = Workspace:FindFirstChild("NPCVehicles")
     if folder then
         folder:Destroy()
-    else
-        warn("NPCVehicles folder not found in Workspace")
     end
 end)
 
 --------------------------------------------------
--- Ввод «скорости» (Throttle)
+-- Поле ввода множителя скорости
 --------------------------------------------------
 
 local speedLabel = Instance.new("TextLabel")
@@ -85,7 +88,7 @@ speedLabel.Size = UDim2.new(1, -20, 0, 20)
 speedLabel.Position = UDim2.new(0, 10, 0, 80)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.GothamBold
-speedLabel.Text = "Throttle (0–1):"
+speedLabel.Text = "Speed multiplier:"
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.TextSize = 14
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -98,29 +101,21 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "например 1 или 0.7"
+speedBox.PlaceholderText = "1 = норм, 2 = в 2 раза быстрее"
 speedBox.Text = "1"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
 speedBox.ClearTextOnFocus = false
 speedBox.Parent = mainFrame
 
-local throttleValue = 1
-
-speedBox.FocusLost:Connect(function(enterPressed)
-    if not enterPressed then return end
-    local value = tonumber(speedBox.Text)
-    if value then
-        value = math.clamp(value, -1, 1)
-        throttleValue = value
-        speedBox.Text = tostring(value)
-    else
-        speedBox.Text = tostring(throttleValue)
-    end
-end)
+local function getMultiplier()
+    local n = tonumber(speedBox.Text)
+    if not n then return 1 end
+    return math.max(0, n)
+end
 
 --------------------------------------------------
--- Autofarm через DriveSeat (машина в Workspace)
+-- Кнопка Autofarm (Start/Stop DriveModule)
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
@@ -135,59 +130,17 @@ autofarmBtn.TextSize = 16
 autofarmBtn.Parent = mainFrame
 
 local running = false
-local driveSeat
-
--- Ищем машину прямо в Workspace: "<ник>'s Car"
-local function getDriveSeat()
-    local carName = LocalPlayer.Name .. "'s Car"
-    local car = Workspace:FindFirstChild(carName)
-    if not car or not car:IsA("Model") then
-        warn("car model not found in Workspace: " .. carName)
-        return nil
-    end
-
-    local seat = car:FindFirstChild("DriveSeat", true)
-    if not seat or not seat:IsA("VehicleSeat") then
-        warn("DriveSeat not found in car")
-        return nil
-    end
-    return seat
-end
-
--- направление руля (0 = прямо)
-local steerDirection = 0
-
-local function startAutofarm()
-    if running then return end
-    running = true
-    autofarmBtn.Text = "Stop Autofarm"
-
-    driveSeat = getDriveSeat()
-    if not driveSeat then
-        running = false
-        autofarmBtn.Text = "Start Autofarm"
-        return
-    end
-
-    -- постоянный газ, как будто зажата W
-    driveSeat.ThrottleFloat = throttleValue
-    driveSeat.SteerFloat    = steerDirection
-end
-
-local function stopAutofarm()
-    running = false
-    autofarmBtn.Text = "Start Autofarm"
-    if driveSeat then
-        driveSeat.ThrottleFloat = 0
-        driveSeat.SteerFloat    = 0
-    end
-end
 
 autofarmBtn.MouseButton1Click:Connect(function()
-    if running then
-        stopAutofarm()
+    if not running then
+        running = true
+        autofarmBtn.Text = "Stop Autofarm"
+        DriveModule.SetSpeedMultiplier(getMultiplier())
+        DriveModule.Start()
     else
-        startAutofarm()
+        running = false
+        autofarmBtn.Text = "Start Autofarm"
+        DriveModule.Stop()
     end
 end)
 
