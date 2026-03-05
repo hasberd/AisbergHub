@@ -1,4 +1,4 @@
--- Midnight Chasers GUI (fixed)
+-- Midnight Chasers GUI (full)
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -9,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 --------------------------------------------------
--- GUI
+-- GUI с крестиком
 --------------------------------------------------
 
 local screenGui = Instance.new("ScreenGui")
@@ -35,7 +35,24 @@ title.Font = Enum.Font.GothamBold
 title.Text = "Midnight Chasers GUI"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = mainFrame
+
+-- Кнопка-крестик
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseButton"
+closeBtn.Size = UDim2.new(0, 30, 1, 0)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Text = "X"
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+closeBtn.Parent = title
+
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
 
 --------------------------------------------------
 -- Remove NPCVehicles
@@ -53,8 +70,8 @@ removeBtn.TextSize = 14
 removeBtn.Parent = mainFrame
 
 removeBtn.MouseButton1Click:Connect(function()
-    -- ВАЖНО: имя именно "NPCVehicles"
-    local folder = Workspace:FindFirstChild("NPCVehicles") -- проверка имени чувствительна к регистру [web:40]
+    -- имя чувствительно к регистру: NPCVehicles
+    local folder = Workspace:FindFirstChild("NPCVehicles")
     if folder then
         folder:Destroy()
     else
@@ -93,7 +110,6 @@ speedBox.Parent = mainFrame
 
 local speed = 100
 
--- Разрешаем только цифры в TextBox [web:38]
 speedBox:GetPropertyChangedSignal("Text"):Connect(function()
     local onlyNums = speedBox.Text:gsub("%D", "")
     if onlyNums == "" then
@@ -114,7 +130,7 @@ speedBox.FocusLost:Connect(function(enterPressed)
 end)
 
 --------------------------------------------------
--- Autofarm (движение модели машины)
+-- Autofarm
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
@@ -131,9 +147,8 @@ autofarmBtn.Parent = mainFrame
 local running = false
 local tween
 
--- Найти машину игрока (подгони под структуру Midnight Chasers) [web:26]
 local function getPlayerCar()
-    -- пример: ищем модель, содержащую ник
+    -- подстрой под структуру Midnight Chasers
     for _, obj in ipairs(Workspace:GetChildren()) do
         if obj:IsA("Model") and obj:FindFirstChildWhichIsA("VehicleSeat", true) then
             if string.find(obj.Name, LocalPlayer.Name) then
@@ -144,7 +159,7 @@ local function getPlayerCar()
     return nil
 end
 
--- Точки маршрута: поставь в игре два Part и вставь их Position
+-- точки маршрута (замени на реальные координаты)
 local pointA = Vector3.new(0, 5, 0)
 local pointB = Vector3.new(600, 5, 0)
 
@@ -161,7 +176,6 @@ local function startAutofarm()
         return
     end
 
-    -- делаем машину анкерной и твиним саму модель через PrimaryPart [web:36][web:39]
     for _, p in ipairs(car:GetDescendants()) do
         if p:IsA("BasePart") then
             p.Anchored = true
@@ -177,8 +191,8 @@ local function startAutofarm()
         time,
         Enum.EasingStyle.Linear,
         Enum.EasingDirection.InOut,
-        -1,    -- бесконечно
-        true,  -- туда‑обратно
+        -1,
+        true,
         0
     )
 
@@ -201,12 +215,14 @@ autofarmBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------
--- Открытие/закрытие GUI на G
+-- Тоггл GUI на G
 --------------------------------------------------
 
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.G then
-        screenGui.Enabled = not screenGui.Enabled
+        if screenGui and screenGui.Parent then
+            screenGui.Enabled = not screenGui.Enabled
+        end
     end
 end)
