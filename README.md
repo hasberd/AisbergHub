@@ -1,11 +1,16 @@
--- Midnight Chasers GUI (без вмешательства в A-Chassis)
+-- Midnight Chasers Autofarm GUI (по точкам маршрута)
 
 local Players   = game:GetService("Players")
 local UIS       = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+
+--------------------------------------------------
+-- GUI
+--------------------------------------------------
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "MidnightChasersGui"
@@ -71,7 +76,7 @@ removeBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------
--- Поле для скорости (чисто для настроек внешнего скрипта)
+-- Ввод скорости
 --------------------------------------------------
 
 local speedLabel = Instance.new("TextLabel")
@@ -79,7 +84,7 @@ speedLabel.Size = UDim2.new(1, -20, 0, 20)
 speedLabel.Position = UDim2.new(0, 10, 0, 80)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.GothamBold
-speedLabel.Text = "Speed (info for script):"
+speedLabel.Text = "Speed:"
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.TextSize = 14
 speedLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -92,24 +97,127 @@ speedBox.Position = UDim2.new(0, 10, 0, 105)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.BorderSizePixel = 0
 speedBox.Font = Enum.Font.Gotham
-speedBox.PlaceholderText = "например 100 или 1.5"
-speedBox.Text = "1"
+speedBox.PlaceholderText = "рекомендую 200–350"
+speedBox.Text = "250"
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBox.TextSize = 14
 speedBox.ClearTextOnFocus = false
 speedBox.Parent = mainFrame
 
-local function getSpeedSetting()
+local function getSpeed()
     local n = tonumber(speedBox.Text)
-    if not n then
-        n = 1
-        speedBox.Text = "1"
+    if not n or n <= 0 then
+        n = 250
+        speedBox.Text = "250"
     end
     return n
 end
 
 --------------------------------------------------
--- Кнопка запуска внешнего автофарма
+-- Логика движения машины
+--------------------------------------------------
+
+local function ensureGroundPart()
+    if not _G.ooga then
+        local new = Instance.new("Part")
+        new.Name = "AisbergGround"
+        new.Anchored = true
+        new.Size = Vector3.new(10000, 10, 10000)
+        new.Transparency = 1
+        new.CanCollide = true
+        new.Parent = Workspace
+        _G.ooga = new
+    end
+end
+
+local currentTween
+
+local function tweenToPosition(car, targetCFrame, speed)
+    local plr = LocalPlayer
+    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local targetPos = targetCFrame.Position
+    local dist = (hrp.Position - targetPos).Magnitude
+    local info = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 0, false, 0)
+
+    local cfValue = Instance.new("CFrameValue")
+    cfValue.Value = car:GetPrimaryPartCFrame()
+
+    cfValue.Changed:Connect(function()
+        local pos = cfValue.Value.Position
+        _G.ooga.Position = pos - Vector3.new(0, 14, 0)
+        car:PivotTo(CFrame.new(_G.ooga.Position + Vector3.new(0, 7, 0), targetPos))
+        local vel = car.PrimaryPart.CFrame.LookVector * speed
+        car.PrimaryPart.AssemblyLinearVelocity = vel
+    end)
+
+    if currentTween then
+        currentTween:Cancel()
+    end
+    currentTween = TweenService:Create(cfValue, info, {Value = targetCFrame})
+    currentTween:Play()
+
+    repeat
+        task.wait()
+    until currentTween.PlaybackState ~= Enum.PlaybackState.Playing
+
+    cfValue:Destroy()
+end
+
+-- точки маршрута из найденного скрипта
+local frames = {
+    CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(2751.86499, -26.0098934, 3694.63354, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(-8821.48438, -26.0098934, 2042.49939, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(-6408.62109, -26.0098934, -727.765198, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(-6099.79639, -26.00989345, -1027.94556, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(-6066.70068, -26.0098934, 493.255524, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(132.786133, -26.0098934, 15.2286377, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(-7692.85449, -26.0098934, -4668.61963, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
+    CFrame.new(4887.24609, -26.0098934, 1222.96826, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414)
+}
+
+local autofarmRunning = false
+
+local function runAutofarm()
+    autofarmRunning = true
+    ensureGroundPart()
+
+    while autofarmRunning do
+        local plr = LocalPlayer
+        local char = plr.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local seat = hum and hum.SeatPart
+
+        if not seat then
+            task.wait(0.2)
+        else
+            local car = seat.Parent
+            local weight = car:FindFirstChild("Body") and car.Body:FindFirstChild("#Weight")
+            if not weight then
+                warn("Не найден Body/#Weight в машине")
+                return
+            end
+
+            car.PrimaryPart = weight
+
+            local speed = getSpeed()
+
+            for _, cf in ipairs(frames) do
+                if not autofarmRunning then break end
+                tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
+            end
+        end
+    end
+
+    if currentTween then
+        currentTween:Cancel()
+    end
+end
+
+--------------------------------------------------
+-- Кнопка Autofarm
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
@@ -118,27 +226,18 @@ autofarmBtn.Position = UDim2.new(0, 10, 1, -45)
 autofarmBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
 autofarmBtn.BorderSizePixel = 0
 autofarmBtn.Font = Enum.Font.GothamBold
-autofarmBtn.Text = "Start WINTER Autofarm"
+autofarmBtn.Text = "Start Autofarm"
 autofarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autofarmBtn.TextSize = 14
+autofarmBtn.TextSize = 16
 autofarmBtn.Parent = mainFrame
 
-local externalLoaded = false
-
 autofarmBtn.MouseButton1Click:Connect(function()
-    if not externalLoaded then
-        externalLoaded = true
-        autofarmBtn.Text = "Autofarm loaded"
-
-        -- пример: передаём настройки во внешний скрипт
-        getgenv().Aisberg_MidnightSettings = {
-            Speed = getSpeedSetting()
-        }
-
-        -- здесь твой выбранный автофарм: WINTER / AisbergHub / любой другой
-        loadstring(game:HttpGet("https://rawscripts.net/raw/WINTER!Midnight-Chasers:-Highway-Racing-Midnight-Chasers-Autofarm-event-78513"))()
+    if not autofarmRunning then
+        autofarmBtn.Text = "Stop Autofarm"
+        task.spawn(runAutofarm)
     else
-        warn("Автофарм уже загружен. Отключай его в его GUI или перезаходи.")
+        autofarmRunning = false
+        autofarmBtn.Text = "Start Autofarm"
     end
 end)
 
