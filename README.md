@@ -1,4 +1,4 @@
--- Midnight Chasers GUI: Autofarm (с очисткой мира) + Auto Race1 (solo, цикл гонок)
+-- Midnight Chasers GUI: Autofarm (с очисткой мира) + Auto City Highway Race 🏁 (solo, цикл гонок)
 
 local Players           = game:GetService("Players")
 local UIS               = game:GetService("UserInputService")
@@ -239,7 +239,7 @@ local farmFrames = {
 }
 
 --------------------------------------------------
--- Race1 чекпоинты (последний — Finish)
+-- City Highway Race чекпоинты (последний — Finish)
 --------------------------------------------------
 
 local race1Frames = {
@@ -344,7 +344,7 @@ local function runFarmRoute()
 end
 
 --------------------------------------------------
--- Race1: QueueRegion / Config.Solo
+-- City Highway Race: Solo
 --------------------------------------------------
 
 local function getRace1()
@@ -359,18 +359,17 @@ local function getRace1Config()
     return race1:FindFirstChild("Config")
 end
 
-local function teleportToQueueRegion()
-    local race1 = getRace1()
-    if not race1 then return end
-
-    local queueRegion = race1:FindFirstChild("QueueRegion")
-    if not queueRegion or not queueRegion:IsA("BasePart") then return end
-
+local function teleportToRaceStart()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    hrp.CFrame = queueRegion.CFrame + Vector3.new(0, 5, 0)
+    hrp.CFrame = CFrame.new(
+        3260.53076, -7.51575422, 1015.698,
+        -3.36170197e-05, -0.951051414, -0.309032798,
+        1, -3.36170197e-05, -5.31971455e-06,
+        -5.31971455e-06, -0.309032798, 0.951051414
+    )
 end
 
 local function startSoloRace()
@@ -384,15 +383,15 @@ local function startSoloRace()
 end
 
 --------------------------------------------------
--- Auto Race1: цикл гонок
+-- Auto City Highway Race 🏁: цикл гонок
 --------------------------------------------------
 
-local function runRace1Route()
+local function runCityHighwayRoute()
     race1Running = true
 
     while race1Running do
-        -- 1) сразу телепорт к очереди
-        teleportToQueueRegion()
+        -- 1) сразу телепорт на старт
+        teleportToRaceStart()
         if not race1Running then break end
 
         -- 2) включаем Solo
@@ -423,7 +422,6 @@ local function runRace1Route()
             if not race1Running then break end
             tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
 
-            -- последний CFrame — считаем финишем
             if idx == #race1Frames then
                 break
             end
@@ -434,8 +432,8 @@ local function runRace1Route()
         end
         if not race1Running then break end
 
-        -- 6) после Finish: телепорт к очереди и ожидание 3 секунды перед новым Solo
-        teleportToQueueRegion()
+        -- 6) после Finish: телепорт на старт и ожидание 3 секунды перед новым Solo
+        teleportToRaceStart()
         if not race1Running then break end
 
         task.wait(3)
@@ -469,7 +467,7 @@ race1Btn.Position = UDim2.new(0, 10, 0, 175)
 race1Btn.BackgroundColor3 = Color3.fromRGB(80, 80, 150)
 race1Btn.BorderSizePixel = 0
 race1Btn.Font = Enum.Font.GothamBold
-race1Btn.Text = "Start Auto Race1"
+race1Btn.Text = "Start Auto City Highway Race 🏁"
 race1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 race1Btn.TextSize = 14
 race1Btn.Parent = mainFrame
@@ -493,10 +491,10 @@ race1Btn.MouseButton1Click:Connect(function()
     if autofarmRunning then return end
     if not race1Running then
         race1Running = true
-        race1Btn.Text = "Stop Auto Race1"
+        race1Btn.Text = "Stop Auto City Highway Race 🏁"
         task.spawn(function()
-            runRace1Route()
-            race1Btn.Text = "Start Auto Race1"
+            runCityHighwayRoute()
+            race1Btn.Text = "Start Auto City Highway Race 🏁"
         end)
     else
         race1Running = false
