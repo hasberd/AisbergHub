@@ -395,11 +395,11 @@ local function isNearFinish(car, finishPart)
     local primary = car.PrimaryPart
     if not primary then return false end
     local dist = (primary.Position - finishPart.Position).Magnitude
-    return dist < 50 -- радиус попадания по финишу, можешь подправить
+    return dist < 50 -- радиус попадания по финишу
 end
 
 --------------------------------------------------
--- Auto Race1: бесконечный цикл гонок
+-- Auto Race1: цикл гонок с заданным порядком
 --------------------------------------------------
 
 local function runRace1Route()
@@ -407,17 +407,19 @@ local function runRace1Route()
     local finishPart = getFinishPart()
 
     while race1Running do
-        -- пауза перед началом следующей гонки
+        -- 1) сразу телепорт к очереди
+        teleportToQueueRegion()
+        if not race1Running then break end
+
+        -- 2) включаем Solo
+        startSoloRace()
+        if not race1Running then break end
+
+        -- 3) ждём 4 секунды перед началом движения
         task.wait(4)
         if not race1Running then break end
 
-        teleportToQueueRegion()
-        task.wait(1)
-        if not race1Running then break end
-
-        startSoloRace()
-
-        -- ждём машину
+        -- 4) ждём машину (пока ты сядешь)
         local car
         for i = 1, 60 do
             car = getCar()
@@ -432,7 +434,7 @@ local function runRace1Route()
         ensureGroundPart()
         local speed = getSpeed()
 
-        -- один круг / до финиша
+        -- 5) едем по чекпоинтам до Finish
         for _, cf in ipairs(race1Frames) do
             if not race1Running then break end
             tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
@@ -445,8 +447,17 @@ local function runRace1Route()
         if currentTween then
             currentTween:Cancel()
         end
+        if not race1Running then break end
 
-        -- цикл не прерываем: while снова подождёт 4 сек и заново телепортнёт в очередь
+        -- 6) после Finish: телепорт к очереди и ожидание 3 секунды перед новым Solo
+        teleportToQueueRegion()
+        if not race1Running then break end
+
+        task.wait(3)
+        if not race1Running then break end
+
+        startSoloRace()
+        -- дальше цикл while повторится: снова 4 сек ожидания, машина, движение
     end
 
     race1Running = false
