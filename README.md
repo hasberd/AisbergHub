@@ -1,4 +1,4 @@
--- Midnight Chasers GUI (full)
+-- Midnight Chasers GUI (pivot version)
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -38,7 +38,6 @@ title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = mainFrame
 
--- Кнопка-крестик
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name = "CloseButton"
 closeBtn.Size = UDim2.new(0, 30, 1, 0)
@@ -70,7 +69,6 @@ removeBtn.TextSize = 14
 removeBtn.Parent = mainFrame
 
 removeBtn.MouseButton1Click:Connect(function()
-    -- имя чувствительно к регистру: NPCVehicles
     local folder = Workspace:FindFirstChild("NPCVehicles")
     if folder then
         folder:Destroy()
@@ -80,7 +78,7 @@ removeBtn.MouseButton1Click:Connect(function()
 end)
 
 --------------------------------------------------
--- Ввод скорости через TextBox
+-- Ввод скорости (TextBox)
 --------------------------------------------------
 
 local speedLabel = Instance.new("TextLabel")
@@ -130,7 +128,7 @@ speedBox.FocusLost:Connect(function(enterPressed)
 end)
 
 --------------------------------------------------
--- Autofarm
+-- Autofarm (двигаем всю модель через PivotTo)
 --------------------------------------------------
 
 local autofarmBtn = Instance.new("TextButton")
@@ -147,19 +145,27 @@ autofarmBtn.Parent = mainFrame
 local running = false
 local tween
 
+-- 1) Машина игрока: "bonitoscocos's Car" внутри модели с ником
 local function getPlayerCar()
-    -- подстрой под структуру Midnight Chasers
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and obj:FindFirstChildWhichIsA("VehicleSeat", true) then
-            if string.find(obj.Name, LocalPlayer.Name) then
-                return obj
-            end
-        end
-    end
-    return nil
+    local playerModel = Workspace:FindFirstChild(LocalPlayer.Name)
+    if not playerModel then return nil end
+
+    local car = playerModel:FindFirstChild(LocalPlayer.Name .. "'s Car")
+    return car
 end
 
--- точки маршрута (замени на реальные координаты)
+-- 2) Гарантируем PrimaryPart (ставим его на DriveSeat, если нет) [web:47][web:50]
+local function ensurePrimaryPart(car)
+    if not car.PrimaryPart then
+        local seat = car:FindFirstChild("DriveSeat")
+        if seat and seat:IsA("BasePart") then
+            car.PrimaryPart = seat
+        end
+    end
+    return car.PrimaryPart
+end
+
+-- 3) Точки маршрута (подставь реальные координаты)
 local pointA = Vector3.new(0, 5, 0)
 local pointB = Vector3.new(600, 5, 0)
 
@@ -169,20 +175,30 @@ local function startAutofarm()
     autofarmBtn.Text = "Stop Autofarm"
 
     local car = getPlayerCar()
-    if not car or not car.PrimaryPart then
-        warn("Car not found or PrimaryPart missing")
+    if not car then
+        warn("Car model not found")
         running = false
         autofarmBtn.Text = "Start Autofarm"
         return
     end
 
+    local primary = ensurePrimaryPart(car)
+    if not primary then
+        warn("PrimaryPart not set for car")
+        running = false
+        autofarmBtn.Text = "Start Autofarm"
+        return
+    end
+
+    -- якорим все части, чтобы физика не мешала
     for _, p in ipairs(car:GetDescendants()) do
         if p:IsA("BasePart") then
             p.Anchored = true
         end
     end
 
-    car:SetPrimaryPartCFrame(CFrame.new(pointA))
+    -- ставим машину в начальную точку
+    car:PivotTo(CFrame.new(pointA))  -- PivotTo рекомендован вместо SetPrimaryPartCFrame [web:43][web:42]
 
     local dist = (pointA - pointB).Magnitude
     local time = dist / math.max(speed, 1)
@@ -191,12 +207,13 @@ local function startAutofarm()
         time,
         Enum.EasingStyle.Linear,
         Enum.EasingDirection.InOut,
-        -1,
-        true,
+        -1,    -- бесконечно
+        true,  -- туда‑обратно
         0
     )
 
-    tween = TweenService:Create(car.PrimaryPart, info, {CFrame = CFrame.new(pointB)})
+    -- твиним pivot модели через PrimaryPart
+    tween = TweenService:Create(primary, info, {CFrame = CFrame.new(pointB)})
     tween:Play()
 end
 
