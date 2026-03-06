@@ -1,0 +1,196 @@
+-- === AisbergHub Playtime Debug Window ===
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- создаём GUI
+local debugGui = Instance.new("ScreenGui")
+debugGui.Name = "AisbergHub_PlaytimeDebug"
+debugGui.ResetOnSpawn = false
+debugGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 420, 0, 260)
+main.Position = UDim2.new(0.5, -210, 0.2, 0)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = debugGui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+title.BorderSizePixel = 0
+title.Font = Enum.Font.GothamBold
+title.Text = "AisbergHub • Playtime Debug"
+title.TextSize = 14
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Parent = main
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Text = "X"
+closeBtn.TextSize = 16
+closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+closeBtn.Parent = main
+
+closeBtn.MouseButton1Click:Connect(function()
+    debugGui:Destroy()
+end)
+
+local startBtn = Instance.new("TextButton")
+startBtn.Size = UDim2.new(0, 180, 0, 30)
+startBtn.Position = UDim2.new(0, 10, 0, 40)
+startBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
+startBtn.BorderSizePixel = 0
+startBtn.Font = Enum.Font.GothamBold
+startBtn.Text = "Start Playtime Debug"
+startBtn.TextSize = 14
+startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+startBtn.Parent = main
+
+local clearBtn = Instance.new("TextButton")
+clearBtn.Size = UDim2.new(0, 180, 0, 30)
+clearBtn.Position = UDim2.new(0, 210, 0, 40)
+clearBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+clearBtn.BorderSizePixel = 0
+clearBtn.Font = Enum.Font.GothamBold
+clearBtn.Text = "Clear Output"
+clearBtn.TextSize = 14
+clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+clearBtn.Parent = main
+
+local outputBox = Instance.new("TextBox")
+outputBox.Size = UDim2.new(1, -20, 1, -80)
+outputBox.Position = UDim2.new(0, 10, 0, 80)
+outputBox.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+outputBox.BorderSizePixel = 0
+outputBox.Font = Enum.Font.Code
+outputBox.TextSize = 14
+outputBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+outputBox.TextXAlignment = Enum.TextXAlignment.Left
+outputBox.TextYAlignment = Enum.TextYAlignment.Top
+outputBox.ClearTextOnFocus = false
+outputBox.MultiLine = true
+outputBox.TextWrapped = false
+outputBox.TextEditable = true
+outputBox.Text = ""
+outputBox.Parent = main
+
+local function appendLine(text)
+    outputBox.Text = outputBox.Text .. text .. "\n"
+    -- автоскролл вниз
+    outputBox.CursorPosition = #outputBox.Text + 1
+end
+
+clearBtn.MouseButton1Click:Connect(function()
+    outputBox.Text = ""
+end)
+
+--------------------------------------------------
+-- Логика сканирования PlaytimeRewards
+--------------------------------------------------
+
+local running = false
+
+local function startScanner()
+    if running then return end
+    running = true
+    startBtn.Text = "Stop Playtime Debug"
+    startBtn.BackgroundColor3 = Color3.fromRGB(150, 60, 60)
+
+    appendLine("[Start] Playtime debug started")
+
+    local ok, err = pcall(function()
+        local pg = LocalPlayer:WaitForChild("PlayerGui")
+        local mainUi = pg:WaitForChild("Main_User_Interface")
+        local rewardsRoot = mainUi:WaitForChild("Rewards")
+        local playtime = rewardsRoot:WaitForChild("PlaytimeRewards")
+
+        local rewardsFolder = playtime:FindFirstChild("Rewards") or playtime
+
+        appendLine("[Info] Using folder: " .. rewardsFolder.Name)
+
+        local rewardButtons = {}
+
+        for _, tierFrame in ipairs(rewardsFolder:GetChildren()) do
+            if tierFrame:IsA("Frame") then
+                local btn = tierFrame:FindFirstChild("Button")
+                if btn and btn:IsA("GuiButton") then
+                    local txtLabel = btn:FindFirstChild("Frame") and btn.Frame:FindFirstChild("TextLabel")
+                    local claimedGui = btn:FindFirstChild("Claimed")
+                    table.insert(rewardButtons, {
+                        Tier    = tierFrame.Name,
+                        Button  = btn,
+                        Label   = txtLabel,
+                        Claimed = claimedGui
+                    })
+                    appendLine(string.format(
+                        "[Found] Tier=%s Label=%s HasClaimed=%s",
+                        tierFrame.Name,
+                        txtLabel and txtLabel.Text or "nil",
+                        tostring(claimedGui ~= nil)
+                    ))
+                end
+            end
+        end
+
+        if #rewardButtons == 0 then
+            appendLine("[Warn] No reward buttons found")
+            return
+        end
+
+        task.spawn(function()
+            while running do
+                task.wait(1)
+                for _, info in ipairs(rewardButtons) do
+                    local btn     = info.Button
+                    local lbl     = info.Label
+                    local claimed = info.Claimed
+
+                    if not btn or not btn.Parent or not btn.Parent.Visible or not btn.Visible then
+                        -- кнопка не видна
+                    else
+                        local text = lbl and lbl.Text or "nil"
+                        local claimedVisible = claimed and claimed.Visible or false
+                        local line = string.format(
+                            "[State] Tier=%s Text=%s Claimed.Visible=%s Active=%s",
+                            info.Tier,
+                            text,
+                            tostring(claimedVisible),
+                            tostring(btn.Active)
+                        )
+                        appendLine(line)
+                    end
+                end
+            end
+            appendLine("[Stop] Playtime debug stopped")
+        end)
+    end)
+
+    if not ok then
+        appendLine("[Error] Init: " .. tostring(err))
+        running = false
+        startBtn.Text = "Start Playtime Debug"
+        startBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
+    end
+end
+
+local function stopScanner()
+    if not running then return end
+    running = false
+    startBtn.Text = "Start Playtime Debug"
+    startBtn.BackgroundColor3 = Color3.fromRGB(50, 130, 50)
+end
+
+startBtn.MouseButton1Click:Connect(function()
+    if running then
+        stopScanner()
+    else
+        startScanner()
+    end
+end)
