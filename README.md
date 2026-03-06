@@ -1,6 +1,6 @@
 -- Midnight Chasers GUI:
--- Autofarm + Auto City Highway Race 🏁 + Anti AFK
--- (платформы раздельные, ошибки логируются через warn)
+-- Autofarm + Auto City Highway Race 🏁 + Anti AFK + Auto Playtime Rewards
+-- AisbergHub
 
 local Players           = game:GetService("Players")
 local UIS               = game:GetService("UserInputService")
@@ -10,6 +10,59 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+
+print("Welcome to AisbergHub. Thanks for using.")
+
+--------------------------------------------------
+-- Auto Playtime Rewards
+--------------------------------------------------
+
+local okRewards, errRewards = pcall(function()
+    local Modules = ReplicatedStorage:WaitForChild("Modules")
+    local Shared  = Modules:WaitForChild("Shared")
+    local DB      = Modules:WaitForChild("DB")
+
+    local Data      = require(Shared:WaitForChild("Data"))
+    local RewardsDB = require(DB:WaitForChild("RewardsDB"))
+    local Network   = require(Modules.Modules:WaitForChild("Network"))
+
+    local dataObj = Data.WaitForData(LocalPlayer)
+    if not dataObj then
+        warn("[AutoPlaytime] WaitForData returned nil")
+        return
+    end
+
+    warn("[AutoPlaytime] Auto playtime rewards started")
+
+    task.spawn(function()
+        while task.wait(2) do
+            local okLoop, errLoop = pcall(function()
+                local playData = dataObj.Data.PlaytimeRewards
+                if not playData or not playData.Claimed then
+                    return
+                end
+
+                local now = Workspace:GetServerTimeNow()
+                for tierName, cfg in pairs(RewardsDB.PlaytimeRewards) do
+                    if not playData.Claimed[tierName] then
+                        local elapsed = now - playData.StartTime + playData.Playtime
+                        if elapsed >= cfg.Time then
+                            warn("[AutoPlaytime] Claiming", tierName, "elapsed =", elapsed)
+                            Network.FireServer("ClaimPlaytimeReward", tierName)
+                        end
+                    end
+                end
+            end)
+            if not okLoop then
+                warn("[AutoPlaytime] Loop error:", errLoop)
+            end
+        end
+    end)
+end)
+
+if not okRewards then
+    warn("[AutoPlaytime] Init error:", errRewards)
+end
 
 --------------------------------------------------
 -- Anti AFK
@@ -65,6 +118,7 @@ closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
 closeBtn.Parent = title
 
 closeBtn.MouseButton1Click:Connect(function()
+    print("[AisbergHub] GUI closed")
     screenGui:Destroy()
 end)
 
@@ -88,6 +142,9 @@ removeBtn.MouseButton1Click:Connect(function()
         local folder = Workspace:FindFirstChild("NPCVehicles")
         if folder then
             folder:Destroy()
+            print("[AisbergHub] NPC Vehicles removed")
+        else
+            print("[AisbergHub] NPC Vehicles folder not found")
         end
     end)
     if not ok then
@@ -333,13 +390,13 @@ local farmFrames = {
 }
 
 --------------------------------------------------
--- City Highway Race чекпоинты (усечённый список)
+-- City Highway Race чекпоинты (сюда подставь полный список, как раньше)
 --------------------------------------------------
 
 local race1Frames = {
     CFrame.new(3322.75391, -2.98221874, 856.207031, 0.961249948, 0, -0.275678426, 0, 1, 0, 0.275678426, 0, 0.961249948),
     CFrame.new(3029.10547, -2.98221874, 660.068298, 0.90629667, 0, -0.422642082, 0, 1, 0, 0.422642082, 0, 0.90629667),
-    -- ... все остальные CFrame трассы ...
+    -- ... остальные CFrame трассы ...
     CFrame.new(-16520.5859, 23.4347839, 12137.5049, 0.156420708, 0.0034087766, 0.987684667, -0.0217956547, 0.999762475, 0, -0.987450063, -0.0215274431, 0.156457841)
 }
 
@@ -384,6 +441,7 @@ local race1Running   = false
 local function runFarmRoute()
     local ok, err = pcall(function()
         autofarmRunning = true
+        print("[AisbergHub] Autofarm loop started")
 
         local plr = LocalPlayer
         hideWorkspaceObjects(plr)
@@ -407,6 +465,7 @@ local function runFarmRoute()
             currentTween:Cancel()
         end
         restoreWorkspaceObjects()
+        print("[AisbergHub] Autofarm loop exited")
     end)
     if not ok then
         warn("[runFarmRoute] Error:", err)
@@ -478,6 +537,7 @@ end
 local function runCityHighwayRoute()
     local ok, err = pcall(function()
         race1Running = true
+        print("[AisbergHub] Auto City Highway Race loop started")
 
         while race1Running do
             teleportToRaceStart()
@@ -533,6 +593,7 @@ local function runCityHighwayRoute()
         end
 
         race1Running = false
+        print("[AisbergHub] Auto City Highway Race loop exited")
     end)
     if not ok then
         warn("[runCityHighwayRoute] Error:", err)
@@ -575,16 +636,19 @@ autofarmBtn.MouseButton1Click:Connect(function()
     if not autofarmRunning then
         autofarmRunning = true
         autofarmBtn.Text = "Stop Autofarm"
+        print("[AisbergHub] Autofarm started")
         task.spawn(function()
             runFarmRoute()
             autofarmRunning = false
             autofarmBtn.Text = "Start Autofarm"
+            print("[AisbergHub] Autofarm stopped")
         end)
     else
         autofarmRunning = false
         if currentTween then
             currentTween:Cancel()
         end
+        print("[AisbergHub] Autofarm stopped (by button)")
     end
 end)
 
@@ -593,9 +657,11 @@ race1Btn.MouseButton1Click:Connect(function()
     if not race1Running then
         race1Running = true
         race1Btn.Text = "Stop Auto City Highway Race 🏁"
+        print("[AisbergHub] Auto City Highway Race started")
         task.spawn(function()
             runCityHighwayRoute()
             race1Btn.Text = "Start Auto City Highway Race 🏁"
+            print("[AisbergHub] Auto City Highway Race stopped")
         end)
     else
         race1Running = false
@@ -606,6 +672,7 @@ race1Btn.MouseButton1Click:Connect(function()
             _G.raceGround:Destroy()
             _G.raceGround = nil
         end
+        print("[AisbergHub] Auto City Highway Race stopped (by button)")
     end
 end)
 
@@ -618,6 +685,7 @@ UIS.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.G then
         if screenGui and screenGui.Parent then
             screenGui.Enabled = not screenGui.Enabled
+            print("[AisbergHub] GUI toggled, Enabled =", screenGui.Enabled)
         end
     end
 end)
