@@ -1,4 +1,4 @@
--- === AisbergHub Playtime Debug Window v3 (автоперенос + скролл + ресайз) ===
+-- === AisbergHub Playtime Debug Window (копируемый текст + скролл + ресайз) ===
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -65,7 +65,7 @@ clearBtn.TextSize = 14
 clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearBtn.Parent = main
 
--- Скроллируемая область
+-- Скроллируемая область + текстбокс (копируемый)
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, -20, 1, -90)
 scroll.Position = UDim2.new(0, 10, 0, 80)
@@ -78,42 +78,47 @@ scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scroll.ClipsDescendants = true
 scroll.Parent = main
 
-local listLayout = Instance.new("UIListLayout")
-listLayout.FillDirection = Enum.FillDirection.Vertical
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0, 2)
-listLayout.Parent = scroll
+local outputBox = Instance.new("TextBox")
+outputBox.BackgroundTransparency = 1
+outputBox.Size = UDim2.new(1, -4, 0, 0)
+outputBox.Position = UDim2.new(0, 2, 0, 2)
+outputBox.AutomaticSize = Enum.AutomaticSize.Y
+outputBox.Font = Enum.Font.Code
+outputBox.TextXAlignment = Enum.TextXAlignment.Left
+outputBox.TextYAlignment = Enum.TextYAlignment.Top
+outputBox.TextWrapped = true
+outputBox.MultiLine = true
+outputBox.ClearTextOnFocus = false
+outputBox.TextEditable = true
+outputBox.TextSize = 14
+outputBox.TextColor3 = Color3.fromRGB(0, 255, 0)
+outputBox.Text = ""
+outputBox.Parent = scroll
 
-local lines = {}
+local function updateCanvas()
+    scroll.CanvasSize = UDim2.new(0, 0, 0, outputBox.AbsoluteSize.Y + 10)
+end
 
-local function appendLine(text)
-    local label = Instance.new("TextLabel")
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, -4, 0, 0)
-    label.AutomaticSize = Enum.AutomaticSize.Y
-    label.Font = Enum.Font.Code
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextYAlignment = Enum.TextYAlignment.Top
-    label.TextWrapped = true
-    label.Text = text
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(0, 255, 0)
-    label.Parent = scroll
-
-    table.insert(lines, label)
-
+outputBox:GetPropertyChangedSignal("Text"):Connect(function()
+    updateCanvas()
     task.defer(function()
-        scroll.CanvasPosition = Vector2.new(0,
-            math.max(scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteSize.Y, 0)
+        scroll.CanvasPosition = Vector2.new(
+            0,
+            math.max(scroll.CanvasSize.Y.Offset - scroll.AbsoluteSize.Y, 0)
         )
     end)
+end)
+
+local function appendLine(text)
+    if outputBox.Text == "" then
+        outputBox.Text = text
+    else
+        outputBox.Text = outputBox.Text .. "\n" .. text
+    end
 end
 
 clearBtn.MouseButton1Click:Connect(function()
-    for _, l in ipairs(lines) do
-        l:Destroy()
-    end
-    lines = {}
+    outputBox.Text = ""
 end)
 
 --------------------------------------------------
@@ -157,7 +162,7 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 --------------------------------------------------
--- Логика сканирования PlaytimeRewards (та же, что v2)
+-- Логика сканирования PlaytimeRewards
 --------------------------------------------------
 
 local running = false
