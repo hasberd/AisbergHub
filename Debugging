@@ -1,10 +1,9 @@
--- === AisbergHub Playtime Debug Window v2 (скролл + ресайз) ===
+-- === AisbergHub Playtime Debug Window v3 (автоперенос + скролл + ресайз) ===
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 
--- GUI
 local debugGui = Instance.new("ScreenGui")
 debugGui.Name = "AisbergHub_PlaytimeDebug"
 debugGui.ResetOnSpawn = false
@@ -75,6 +74,8 @@ scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 6
 scroll.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.ClipsDescendants = true
 scroll.Parent = main
 
 local listLayout = Instance.new("UIListLayout")
@@ -83,30 +84,29 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 2)
 listLayout.Parent = scroll
 
-local function updateCanvasSize()
-    scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
-end
-
-listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
-
 local lines = {}
 
 local function appendLine(text)
     local label = Instance.new("TextLabel")
     label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, -4, 0, 16)
+    label.Size = UDim2.new(1, -4, 0, 0)
+    label.AutomaticSize = Enum.AutomaticSize.Y
     label.Font = Enum.Font.Code
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.TextYAlignment = Enum.TextYAlignment.Top
-    label.TextWrapped = false
+    label.TextWrapped = true
     label.Text = text
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(0, 255, 0)
     label.Parent = scroll
 
     table.insert(lines, label)
-    updateCanvasSize()
-    scroll.CanvasPosition = Vector2.new(0, math.max(scroll.CanvasSize.Y.Offset - scroll.AbsoluteSize.Y, 0))
+
+    task.defer(function()
+        scroll.CanvasPosition = Vector2.new(0,
+            math.max(scroll.AbsoluteCanvasSize.Y - scroll.AbsoluteSize.Y, 0)
+        )
+    end)
 end
 
 clearBtn.MouseButton1Click:Connect(function()
@@ -114,11 +114,10 @@ clearBtn.MouseButton1Click:Connect(function()
         l:Destroy()
     end
     lines = {}
-    updateCanvasSize()
 end)
 
 --------------------------------------------------
--- Ресайз окна (за правый‑нижний угол)
+-- Ресайз окна (правый‑нижний угол)
 --------------------------------------------------
 
 local resizeHandle = Instance.new("Frame")
@@ -158,7 +157,7 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 --------------------------------------------------
--- Логика сканирования PlaytimeRewards
+-- Логика сканирования PlaytimeRewards (та же, что v2)
 --------------------------------------------------
 
 local running = false
