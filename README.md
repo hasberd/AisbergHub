@@ -1,4 +1,4 @@
--- Midnight Chasers GUI: Autofarm (с очисткой мира) + Auto City Highway Race 🏁 (solo, цикл гонок)
+-- Midnight Chasers GUI: Autofarm (с отдельной платформой) + Auto City Highway Race 🏁 (своё основание, цикл гонок)
 
 local Players           = game:GetService("Players")
 local UIS               = game:GetService("UserInputService")
@@ -172,28 +172,47 @@ local function restoreWorkspaceObjects()
 end
 
 --------------------------------------------------
--- Платформа и движение
+-- Платформы: отдельная для фарма и для гонки
 --------------------------------------------------
 
-local function ensureGroundPart()
-    if not _G.ooga then
-        local new = Instance.new("Part")
-        new.Name = "AisbergGround"
-        new.Anchored = true
-        new.Size = Vector3.new(10000, 10, 10000)
-        new.Transparency = 0
-        new.CanCollide = true
-        new.Parent = Workspace
-        _G.ooga = new
+local function ensureFarmGround()
+    if not _G.farmGround then
+        local p = Instance.new("Part")
+        p.Name = "FarmGround"
+        p.Anchored = true
+        p.Size = Vector3.new(10000, 10, 10000)
+        p.Transparency = 1
+        p.CanCollide = true
+        p.Parent = Workspace
+        _G.farmGround = p
     end
 end
 
+local function ensureRaceGround()
+    if not _G.raceGround then
+        local p = Instance.new("Part")
+        p.Name = "RaceGround"
+        p.Anchored = true
+        p.Size = Vector3.new(10000, 10, 10000)
+        p.Transparency = 1
+        p.CanCollide = true
+        p.Parent = Workspace
+        _G.raceGround = p
+    end
+end
+
+--------------------------------------------------
+-- Общие твины
+--------------------------------------------------
+
 local currentTween
 
-local function tweenToPosition(car, targetCFrame, speed)
+-- Твин для фарма (использует FarmGround, чуть выше платформы)
+local function tweenFarm(car, targetCFrame, speed)
+    ensureFarmGround()
+
     local plr = LocalPlayer
-    local char = plr.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     local targetPos = targetCFrame.Position
@@ -205,10 +224,43 @@ local function tweenToPosition(car, targetCFrame, speed)
 
     cfValue.Changed:Connect(function()
         local pos = cfValue.Value.Position
-        _G.ooga.Position = pos - Vector3.new(0, 14, 0)
-        car:PivotTo(CFrame.new(_G.ooga.Position + Vector3.new(0, 7, 0), targetPos))
-        local vel = car.PrimaryPart.CFrame.LookVector * speed
-        car.PrimaryPart.AssemblyLinearVelocity = vel
+        _G.farmGround.Position = pos - Vector3.new(0, 14, 0)
+        car:PivotTo(CFrame.new(_G.farmGround.Position + Vector3.new(0, 7, 0), targetPos))
+        car.PrimaryPart.AssemblyLinearVelocity = car.PrimaryPart.CFrame.LookVector * speed
+    end)
+
+    if currentTween then
+        currentTween:Cancel()
+    end
+    currentTween = TweenService:Create(cfValue, info, {Value = targetCFrame})
+    currentTween:Play()
+
+    repeat task.wait() until currentTween.PlaybackState ~= Enum.PlaybackState.Playing
+
+    cfValue:Destroy()
+end
+
+-- Твин для гонки (использует RaceGround, маленький оффсет по Y, чтобы не подкидывало)
+local function tweenRace(car, targetCFrame, speed)
+    ensureRaceGround()
+
+    local plr = LocalPlayer
+    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local targetPos = targetCFrame.Position
+    local dist = (hrp.Position - targetPos).Magnitude
+    local info = TweenInfo.new(dist / speed, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 0, false, 0)
+
+    local cfValue = Instance.new("CFrameValue")
+    cfValue.Value = car:GetPrimaryPartCFrame()
+
+    cfValue.Changed:Connect(function()
+        local pos = cfValue.Value.Position
+        -- минимальный подъём, чтобы не улетать вверх
+        _G.raceGround.Position = Vector3.new(pos.X, targetPos.Y - 2, pos.Z)
+        car:PivotTo(CFrame.new(Vector3.new(pos.X, targetPos.Y + 1, pos.Z), targetPos))
+        car.PrimaryPart.AssemblyLinearVelocity = car.PrimaryPart.CFrame.LookVector * speed
     end)
 
     if currentTween then
@@ -313,7 +365,7 @@ local autofarmRunning = false
 local race1Running   = false
 
 --------------------------------------------------
--- Автофарм (с очисткой мира, циклом)
+-- Автофарм (с отдельной платформой, циклом)
 --------------------------------------------------
 
 local function runFarmRoute()
@@ -321,7 +373,7 @@ local function runFarmRoute()
 
     local plr = LocalPlayer
     hideWorkspaceObjects(plr)
-    ensureGroundPart()
+    ensureFarmGround()
     task.wait()
 
     while autofarmRunning do
@@ -332,7 +384,7 @@ local function runFarmRoute()
             local speed = getSpeed()
             for _, cf in ipairs(farmFrames) do
                 if not autofarmRunning then break end
-                tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
+                tweenFarm(car, cf, speed)
             end
         end
     end
@@ -344,7 +396,7 @@ local function runFarmRoute()
 end
 
 --------------------------------------------------
--- City Highway Race: Solo
+-- City Highway Race: Solo и стартовый CFrame
 --------------------------------------------------
 
 local function getRace1()
@@ -383,7 +435,7 @@ local function startSoloRace()
 end
 
 --------------------------------------------------
--- Auto City Highway Race 🏁: цикл гонок
+-- Auto City Highway Race 🏁: цикл гонок с собственной платформой
 --------------------------------------------------
 
 local function runCityHighwayRoute()
@@ -414,13 +466,12 @@ local function runCityHighwayRoute()
             break
         end
 
-        ensureGroundPart()
         local speed = getSpeed()
 
         -- 5) едем по чекпоинтам до последнего (Finish)
         for idx, cf in ipairs(race1Frames) do
             if not race1Running then break end
-            tweenToPosition(car, cf + Vector3.new(0, 5, 0), speed)
+            tweenRace(car, cf, speed)
 
             if idx == #race1Frames then
                 break
@@ -441,6 +492,12 @@ local function runCityHighwayRoute()
 
         startSoloRace()
         -- дальше цикл while повторится: снова 4 сек ожидания, машина, движение
+    end
+
+    -- по выходу из цикла чистим платформу гонки
+    if _G.raceGround then
+        _G.raceGround:Destroy()
+        _G.raceGround = nil
     end
 
     race1Running = false
@@ -484,6 +541,11 @@ autofarmBtn.MouseButton1Click:Connect(function()
         end)
     else
         autofarmRunning = false
+        if currentTween then
+            currentTween:Cancel()
+        end
+        -- по желанию можно чистить FarmGround
+        -- if _G.farmGround then _G.farmGround:Destroy() _G.farmGround = nil end
     end
 end)
 
@@ -498,6 +560,13 @@ race1Btn.MouseButton1Click:Connect(function()
         end)
     else
         race1Running = false
+        if currentTween then
+            currentTween:Cancel()
+        end
+        if _G.raceGround then
+            _G.raceGround:Destroy()
+            _G.raceGround = nil
+        end
     end
 end)
 
@@ -507,7 +576,7 @@ end)
 
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if input.KeyCode == Enum.KeyCode.H then
+    if input.KeyCode == Enum.KeyCode.G then
         if screenGui and screenGui.Parent then
             screenGui.Enabled = not screenGui.Enabled
         end
