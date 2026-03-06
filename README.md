@@ -181,7 +181,7 @@ local function ensureGroundPart()
         new.Name = "AisbergGround"
         new.Anchored = true
         new.Size = Vector3.new(10000, 10, 10000)
-        new.Transparency = 1
+        new.Transparency = 0
         new.CanCollide = true
         new.Parent = Workspace
         _G.ooga = new
@@ -507,7 +507,7 @@ end)
 
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if input.KeyCode == Enum.KeyCode.G then
+    if input.KeyCode == Enum.KeyCode.H then
         if screenGui and screenGui.Parent then
             screenGui.Enabled = not screenGui.Enabled
         end
