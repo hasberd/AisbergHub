@@ -1,9 +1,10 @@
--- === AisbergHub Playtime Debug Window ===
+-- === AisbergHub Playtime Debug Window v2 (скролл + ресайз) ===
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
 
--- создаём GUI
+-- GUI
 local debugGui = Instance.new("ScreenGui")
 debugGui.Name = "AisbergHub_PlaytimeDebug"
 debugGui.ResetOnSpawn = false
@@ -26,6 +27,7 @@ title.Font = Enum.Font.GothamBold
 title.Text = "AisbergHub • Playtime Debug"
 title.TextSize = 14
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = main
 
 local closeBtn = Instance.new("TextButton")
@@ -64,31 +66,95 @@ clearBtn.TextSize = 14
 clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearBtn.Parent = main
 
-local outputBox = Instance.new("TextBox")
-outputBox.Size = UDim2.new(1, -20, 1, -80)
-outputBox.Position = UDim2.new(0, 10, 0, 80)
-outputBox.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-outputBox.BorderSizePixel = 0
-outputBox.Font = Enum.Font.Code
-outputBox.TextSize = 14
-outputBox.TextColor3 = Color3.fromRGB(0, 255, 0)
-outputBox.TextXAlignment = Enum.TextXAlignment.Left
-outputBox.TextYAlignment = Enum.TextYAlignment.Top
-outputBox.ClearTextOnFocus = false
-outputBox.MultiLine = true
-outputBox.TextWrapped = false
-outputBox.TextEditable = true
-outputBox.Text = ""
-outputBox.Parent = main
+-- Скроллируемая область
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -20, 1, -90)
+scroll.Position = UDim2.new(0, 10, 0, 80)
+scroll.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 6
+scroll.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.Parent = main
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 2)
+listLayout.Parent = scroll
+
+local function updateCanvasSize()
+    scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+end
+
+listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
+
+local lines = {}
 
 local function appendLine(text)
-    outputBox.Text = outputBox.Text .. text .. "\n"
-    -- автоскролл вниз
-    outputBox.CursorPosition = #outputBox.Text + 1
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, -4, 0, 16)
+    label.Font = Enum.Font.Code
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Top
+    label.TextWrapped = false
+    label.Text = text
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(0, 255, 0)
+    label.Parent = scroll
+
+    table.insert(lines, label)
+    updateCanvasSize()
+    scroll.CanvasPosition = Vector2.new(0, math.max(scroll.CanvasSize.Y.Offset - scroll.AbsoluteSize.Y, 0))
 end
 
 clearBtn.MouseButton1Click:Connect(function()
-    outputBox.Text = ""
+    for _, l in ipairs(lines) do
+        l:Destroy()
+    end
+    lines = {}
+    updateCanvasSize()
+end)
+
+--------------------------------------------------
+-- Ресайз окна (за правый‑нижний угол)
+--------------------------------------------------
+
+local resizeHandle = Instance.new("Frame")
+resizeHandle.Size = UDim2.new(0, 14, 0, 14)
+resizeHandle.Position = UDim2.new(1, -14, 1, -14)
+resizeHandle.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+resizeHandle.BorderSizePixel = 0
+resizeHandle.Parent = main
+
+local resizing = false
+local resizeStartPos
+local resizeStartSize
+
+resizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        resizing = true
+        resizeStartPos = UIS:GetMouseLocation()
+        resizeStartSize = main.Size
+    end
+end)
+
+resizeHandle.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        resizing = false
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local currentPos = UIS:GetMouseLocation()
+        local delta = currentPos - resizeStartPos
+
+        local newW = math.max(320, resizeStartSize.X.Offset + delta.X)
+        local newH = math.max(200, resizeStartSize.Y.Offset + delta.Y)
+        main.Size = UDim2.new(0, newW, 0, newH)
+    end
 end)
 
 --------------------------------------------------
@@ -152,9 +218,7 @@ local function startScanner()
                     local lbl     = info.Label
                     local claimed = info.Claimed
 
-                    if not btn or not btn.Parent or not btn.Parent.Visible or not btn.Visible then
-                        -- кнопка не видна
-                    else
+                    if btn and btn.Parent and btn.Parent.Visible and btn.Visible then
                         local text = lbl and lbl.Text or "nil"
                         local claimedVisible = claimed and claimed.Visible or false
                         local line = string.format(
